@@ -149,6 +149,6 @@ This project is currently under active development. Contributions, suggestions, 
 
 ##  Conclusion
 
-LocalConnect Ethiopia is designed to evolve into a full-featured local service marketplace. The current phase establishes a strong UI foundation, ensuring that future integrations can be implemented efficiently with minimal restructuring.
+LocalConnect Ethiopia is designed to evolve into a full-featured local service marketplace. The current phase establishes a strong UI foundation, ensuring that future integrations can be implemented efficiently with minimal restructuring..
 
 ---
