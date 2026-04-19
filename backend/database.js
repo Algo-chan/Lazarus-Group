@@ -1,0 +1,103 @@
+const Datastore = require('nedb-promises');
+const path = require('path');
+
+const usersDB = Datastore.create(path.join(__dirname, 'users.db'));
+const servicesDB = Datastore.create(path.join(__dirname, 'services.db'));
+
+// Seed professional services if empty
+const seedServices = async () => {
+  const count = await servicesDB.count({});
+  if (count === 0) {
+    const professionalServices = [
+      {
+        id: '1',
+        title: "Expert Plumbing & Repair",
+        category: "Plumbing",
+        provider: "Abebe Plumbing Solutions",
+        rating: 4.8,
+        reviewsCount: 156,
+        price: "Starts from $45/hr",
+        description: "Specializing in all plumbing needs, from emergency leak repair to bathroom installations. 24/7 service available.",
+        image: "assets/images/photo-1.jpg",
+        location: "Bole, Addis Ababa",
+        verified: true,
+        contact: {
+          phone: "+251 911 234 567",
+          whatsapp: "+251 911 234 567"
+        }
+      },
+      {
+        id: '2',
+        title: "Garden & Landscape Design",
+        category: "Gardening",
+        provider: "Kebede Green Landscapes",
+        rating: 4.5,
+        reviewsCount: 89,
+        price: "Starts from $35/hr",
+        description: "Transform your outdoor space with our expert landscaping, lawn maintenance, and garden design services.",
+        image: "assets/images/oto-2.jpg",
+        location: "CMC, Addis Ababa",
+        verified: true,
+        contact: {
+          phone: "+251 912 345 678",
+          whatsapp: "+251 912 345 678"
+        }
+      },
+      {
+        id: '3',
+        title: "Professional Electrician",
+        category: "Electrician",
+        provider: "Dawit Electrical Works",
+        rating: 4.9,
+        reviewsCount: 230,
+        price: "Starts from $55/hr",
+        description: "Certified electricians providing safe and reliable electrical installations, wiring, and repairs for homes and offices.",
+        image: "assets/images/photo-3.jpg",
+        location: "Saris, Addis Ababa",
+        verified: true,
+        contact: {
+          phone: "+251 913 456 789",
+          whatsapp: "+251 913 456 789"
+        }
+      },
+      {
+        id: '4',
+        title: "Deep House Cleaning",
+        category: "Cleaning",
+        provider: "CleanPro Services",
+        rating: 4.7,
+        reviewsCount: 112,
+        price: "Starts from $25/hr",
+        description: "Providing premium house and office cleaning services. We use eco-friendly products to ensure a healthy environment.",
+        image: "assets/images/photo-4.jpg",
+        location: "Piyassa, Addis Ababa",
+        verified: false,
+        contact: {
+          phone: "+251 914 567 890",
+          whatsapp: "+251 914 567 890"
+        }
+      },
+      {
+        id: '5',
+        title: "Interior & Exterior Painting",
+        category: "Painting",
+        provider: "ColorMaster Designs",
+        rating: 4.6,
+        reviewsCount: 65,
+        price: "Starts from $40/hr",
+        description: "Professional painting services for residential and commercial properties. We offer color consultation and premium finishes.",
+        image: "assets/images/photo-1.jpg",
+        location: "Kality, Addis Ababa",
+        verified: true,
+        contact: {
+          phone: "+251 915 678 901",
+          whatsapp: "+251 915 678 901"
+        }
+      }
+    ];
+    await servicesDB.insert(professionalServices);
+    console.log('Database seeded with professional services.');
+  }
+};
+
+module.exports = { usersDB, servicesDB, seedServices };
