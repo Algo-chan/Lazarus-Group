@@ -65,14 +65,14 @@ class _SignupScreenState extends State<SignupScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text(
+                Text(
                   'Create Account',
-                  style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Color(0xFF2D3436)),
+                  style: Theme.of(context).textTheme.displayLarge,
                 ),
                 const SizedBox(height: 8),
-                const Text(
+                Text(
                   'Sign up to get started with LocalConnect',
-                  style: TextStyle(fontSize: 16, color: Colors.grey),
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.grey),
                 ),
                 const SizedBox(height: 40),
                 
@@ -80,7 +80,7 @@ class _SignupScreenState extends State<SignupScreen> {
                 TextFormField(
                   controller: _nameController,
                   decoration: const InputDecoration(
-                    labelText: 'Full Name',
+                    hintText: 'Full Name',
                     prefixIcon: Icon(Icons.person_outline),
                   ),
                   validator: (value) => (value == null || value.isEmpty) ? 'Enter your name' : null,
@@ -92,7 +92,7 @@ class _SignupScreenState extends State<SignupScreen> {
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
                   decoration: const InputDecoration(
-                    labelText: 'Email Address',
+                    hintText: 'Email Address',
                     prefixIcon: Icon(Icons.email_outlined),
                   ),
                   validator: (value) => (value == null || !value.contains('@')) ? 'Enter a valid email' : null,
@@ -104,7 +104,7 @@ class _SignupScreenState extends State<SignupScreen> {
                   controller: _passwordController,
                   obscureText: true,
                   decoration: const InputDecoration(
-                    labelText: 'Password',
+                    hintText: 'Password',
                     prefixIcon: Icon(Icons.lock_outline),
                   ),
                   validator: (value) => (value == null || value.length < 6) ? 'Password must be at least 6 characters' : null,
@@ -124,10 +124,10 @@ class _SignupScreenState extends State<SignupScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text("Already have an account? "),
+                    const Text("Already have an account? ", style: TextStyle(color: Colors.grey)),
                     GestureDetector(
                       onTap: () => Navigator.pop(context),
-                      child: const Text('Log In', style: TextStyle(color: Color(0xFFFF6B35), fontWeight: FontWeight.bold)),
+                      child: Text('Log In', style: TextStyle(color: Theme.of(context).primaryColor, fontWeight: FontWeight.bold)),
                     ),
                   ],
                 ),

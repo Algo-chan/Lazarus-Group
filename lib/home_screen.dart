@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'service_detail_screen.dart';
 import 'profile_screen.dart';
 import 'api_service.dart';
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ServiceCategory {
   final String id;
@@ -16,6 +18,7 @@ class ServiceCategory {
   final String location;
   final bool verified;
   final String image;
+  final Color themeColor;
 
   ServiceCategory({
     required this.id,
@@ -30,14 +33,16 @@ class ServiceCategory {
     required this.location,
     required this.verified,
     required this.image,
+    required this.themeColor,
   });
 
   factory ServiceCategory.fromJson(Map<String, dynamic> json) {
+    final cat = json['category'] ?? '';
     return ServiceCategory(
       id: json['id'] ?? json['_id'] ?? '',
       name: json['title'] ?? '',
       description: json['description'] ?? '',
-      icon: _getIcon(json['category'] ?? ''),
+      icon: _getIcon(cat),
       provider: json['provider'] ?? '',
       contactPhone: json['contact']?['phone'] ?? '+251 000 000 000',
       rating: (json['rating'] ?? 0.0).toDouble(),
@@ -46,17 +51,28 @@ class ServiceCategory {
       location: json['location'] ?? '',
       verified: json['verified'] ?? false,
       image: json['image'] ?? 'assets/images/photo-1.jpg',
+      themeColor: _getColor(cat),
     );
   }
 
   static IconData _getIcon(String category) {
     category = category.toLowerCase();
-    if (category.contains('plumbing')) return Icons.plumbing;
-    if (category.contains('electric')) return Icons.electrical_services;
-    if (category.contains('clean')) return Icons.cleaning_services;
-    if (category.contains('garden')) return Icons.yard;
-    if (category.contains('paint')) return Icons.format_paint;
-    return Icons.work;
+    if (category.contains('plumbing')) return Icons.plumbing_rounded;
+    if (category.contains('electric')) return Icons.electrical_services_rounded;
+    if (category.contains('clean')) return Icons.cleaning_services_rounded;
+    if (category.contains('garden')) return Icons.yard_rounded;
+    if (category.contains('paint')) return Icons.format_paint_rounded;
+    return Icons.miscellaneous_services_rounded;
+  }
+
+  static Color _getColor(String category) {
+    category = category.toLowerCase();
+    if (category.contains('plumbing')) return Colors.blue;
+    if (category.contains('electric')) return Colors.orange;
+    if (category.contains('clean')) return Colors.teal;
+    if (category.contains('garden')) return Colors.green;
+    if (category.contains('paint')) return Colors.purple;
+    return Colors.indigo;
   }
 }
 
@@ -71,123 +87,275 @@ class _HomeScreenState extends State<HomeScreen> {
   String _searchQuery = '';
   String _selectedCategory = 'All';
   List<String> _categories = ['All'];
+  String _userName = 'Guest';
   
   @override
   void initState() {
     super.initState();
-    _loadCategories();
+    _loadData();
   }
 
-  void _loadCategories() async {
+  void _loadData() async {
     final cats = await ApiService.getCategories();
+    final prefs = await SharedPreferences.getInstance();
+    final userStr = prefs.getString('user');
+    if (userStr != null) {
+      final user = jsonDecode(userStr);
+      setState(() {
+        _userName = user['name'] ?? 'User';
+      });
+    }
     setState(() => _categories = cats);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
-      appBar: AppBar(
-        title: const Text('LocalConnect'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.person_outline),
-            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ProfileScreen())),
-          ),
-          const SizedBox(width: 8),
-        ],
-      ),
-      body: Column(
-        children: [
-          // Search & Location Header
-          Container(
-            padding: const EdgeInsets.all(16),
-            color: Colors.white,
+      body: CustomScrollView(
+        slivers: [
+          _buildAppBar(),
+          SliverToBoxAdapter(
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Location Selector (Mock)
-                Row(
-                  children: [
-                    const Icon(Icons.location_on, color: Color(0xFFFF6B35), size: 20),
-                    const SizedBox(width: 8),
-                    const Text('Bole, Addis Ababa', style: TextStyle(fontWeight: FontWeight.w600)),
-                    const Icon(Icons.keyboard_arrow_down, size: 20),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                // Search Bar
-                TextField(
-                  onChanged: (val) => setState(() => _searchQuery = val),
-                  decoration: InputDecoration(
-                    hintText: 'Search for "Plumber", "Cleaner"...',
-                    prefixIcon: const Icon(Icons.search),
-                    filled: true,
-                    fillColor: const Color(0xFFF1F2F6),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                ),
+                _buildSearchBar(),
+                _buildSectionHeader('Categories', () {}),
+                _buildCategories(),
+                _buildSectionHeader('Featured Services', () {}),
+                _buildFeaturedServices(),
+                _buildSectionHeader('Popular Near You', () {}),
               ],
             ),
           ),
-          
-          // Horizontal Categories
-          Container(
-            height: 60,
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: _categories.length,
-              itemBuilder: (context, index) {
-                final cat = _categories[index];
-                final isSelected = _selectedCategory == cat;
-                return Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: ChoiceChip(
-                    label: Text(cat),
-                    selected: isSelected,
-                    onSelected: (selected) {
-                      setState(() => _selectedCategory = cat);
-                    },
-                    selectedColor: const Color(0xFFFF6B35),
-                    labelStyle: TextStyle(color: isSelected ? Colors.white : Colors.black87),
-                  ),
-                );
-              },
+          _buildServiceList(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAppBar() {
+    return SliverAppBar(
+      expandedHeight: 120,
+      floating: true,
+      pinned: true,
+      elevation: 0,
+      flexibleSpace: FlexibleSpaceBar(
+        background: Container(color: Colors.white),
+        titlePadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Hello, $_userName', style: const TextStyle(fontSize: 14, color: Colors.grey, fontWeight: FontWeight.normal)),
+                const Text('Find Services', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87)),
+              ],
             ),
+            GestureDetector(
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ProfileScreen())),
+              child: CircleAvatar(
+                radius: 20,
+                backgroundColor: Theme.of(context).primaryColor.withOpacity(0.1),
+                child: const Icon(Icons.person, color: Color(0xFF6C63FF)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSearchBar() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      child: TextField(
+        onChanged: (val) => setState(() => _searchQuery = val),
+        decoration: InputDecoration(
+          hintText: 'Search for any service...',
+          prefixIcon: const Icon(Icons.search_rounded, color: Colors.grey),
+          suffixIcon: Container(
+            margin: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Theme.of(context).primaryColor,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(Icons.tune_rounded, color: Colors.white, size: 20),
           ),
+        ),
+      ),
+    );
+  }
 
-          // Service List
-          Expanded(
-            child: FutureBuilder<List<dynamic>>(
-              future: ApiService.getServices(query: _searchQuery, category: _selectedCategory),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                if (snapshot.hasError) {
-                  return Center(child: Text('Error: ${snapshot.error}'));
-                }
-                final services = snapshot.data ?? [];
-                if (services.isEmpty) {
-                  return const Center(child: Text('No results found.'));
-                }
-
-                return ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: services.length,
-                  itemBuilder: (context, index) {
-                    final service = ServiceCategory.fromJson(services[index]);
-                    return _ProfessionalServiceCard(service: service);
-                  },
-                );
-              },
-            ),
+  Widget _buildSectionHeader(String title, VoidCallback onSeeAll) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF2D3436))),
+          TextButton(
+            onPressed: onSeeAll,
+            child: const Text('See All', style: TextStyle(color: Color(0xFF6C63FF), fontWeight: FontWeight.bold)),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildCategories() {
+    return SizedBox(
+      height: 100,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        itemCount: _categories.length,
+        itemBuilder: (context, index) {
+          final cat = _categories[index];
+          final isSelected = _selectedCategory == cat;
+          final icon = ServiceCategory._getIcon(cat);
+          final color = ServiceCategory._getColor(cat);
+
+          return GestureDetector(
+            onTap: () => setState(() => _selectedCategory = cat),
+            child: Container(
+              width: 80,
+              margin: const EdgeInsets.symmetric(horizontal: 8),
+              child: Column(
+                children: [
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: isSelected ? color : color.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: isSelected ? [BoxShadow(color: color.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 4))] : [],
+                    ),
+                    child: Icon(icon, color: isSelected ? Colors.white : color, size: 28),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    cat,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                      color: isSelected ? color : Colors.grey[700],
+                    ),
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildFeaturedServices() {
+    return SizedBox(
+      height: 200,
+      child: FutureBuilder<List<dynamic>>(
+        future: ApiService.getServices(),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) return const SizedBox();
+          final services = snapshot.data!;
+          return ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            itemCount: services.length > 3 ? 3 : services.length,
+            itemBuilder: (context, index) {
+              final service = ServiceCategory.fromJson(services[index]);
+              return _FeaturedServiceCard(service: service);
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildServiceList() {
+    return FutureBuilder<List<dynamic>>(
+      future: ApiService.getServices(query: _searchQuery, category: _selectedCategory),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const SliverFillRemaining(child: Center(child: CircularProgressIndicator()));
+        }
+        if (snapshot.hasError) {
+          return SliverFillRemaining(child: Center(child: Text('Error: ${snapshot.error}')));
+        }
+        final services = snapshot.data ?? [];
+        if (services.isEmpty) {
+          return const SliverFillRemaining(child: Center(child: Text('No services found.')));
+        }
+
+        return SliverPadding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          sliver: SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, index) {
+                final service = ServiceCategory.fromJson(services[index]);
+                return _ProfessionalServiceCard(service: service);
+              },
+              childCount: services.length,
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _FeaturedServiceCard extends StatelessWidget {
+  final ServiceCategory service;
+  const _FeaturedServiceCard({required this.service});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 280,
+      margin: const EdgeInsets.only(right: 16),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        image: DecorationImage(
+          image: AssetImage(service.image),
+          fit: BoxFit.cover,
+        ),
+      ),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Colors.transparent, Colors.black.withOpacity(0.8)],
+          ),
+        ),
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.end,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(10)),
+              child: Text(service.price, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+            ),
+            const SizedBox(height: 8),
+            Text(service.name, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                const Icon(Icons.star, color: Colors.amber, size: 16),
+                const SizedBox(width: 4),
+                Text('${service.rating} (${service.reviewsCount} reviews)', style: const TextStyle(color: Colors.white70, fontSize: 12)),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -202,63 +370,55 @@ class _ProfessionalServiceCard extends StatelessWidget {
     return Card(
       child: InkWell(
         onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => ServiceDetailScreen(category: service))),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Image
-              ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.asset(service.image, width: 100, height: 100, fit: BoxFit.cover),
+              Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Image.asset(service.image, width: 100, height: 100, fit: BoxFit.cover),
+                  ),
+                  if (service.verified)
+                    Positioned(
+                      top: 6,
+                      right: 6,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                        child: const Icon(Icons.verified, color: Colors.blue, size: 14),
+                      ),
+                    ),
+                ],
               ),
               const SizedBox(width: 16),
-              // Info
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Expanded(child: Text(service.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis)),
-                        if (service.verified) const Icon(Icons.verified, color: Colors.blue, size: 18),
-                      ],
-                    ),
+                    Text(service.name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis),
                     const SizedBox(height: 4),
-                    Text(service.provider, style: TextStyle(color: Colors.grey[600], fontSize: 14)),
+                    Text(service.provider, style: TextStyle(color: Colors.grey[600], fontSize: 13)),
                     const SizedBox(height: 8),
-                    // Rating
                     Row(
                       children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(color: Colors.green, borderRadius: BorderRadius.circular(4)),
-                          child: Row(
-                            children: [
-                              Text(service.rating.toString(), style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
-                              const SizedBox(width: 2),
-                              const Icon(Icons.star, color: Colors.white, size: 12),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text('${service.reviewsCount} Reviews', style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+                        const Icon(Icons.star_rounded, color: Colors.amber, size: 18),
+                        const SizedBox(width: 4),
+                        Text(service.rating.toString(), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                        const SizedBox(width: 4),
+                        Text('(${service.reviewsCount})', style: TextStyle(color: Colors.grey[500], fontSize: 13)),
+                        const Spacer(),
+                        Text(service.price, style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF6C63FF), fontSize: 14)),
                       ],
                     ),
                     const SizedBox(height: 8),
-                    // Location & Price
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Row(
-                          children: [
-                            const Icon(Icons.location_on, size: 14, color: Colors.grey),
-                            const SizedBox(width: 4),
-                            Text(service.location, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-                          ],
-                        ),
-                        Text(service.price, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFFFF6B35))),
+                        Icon(Icons.location_on_outlined, size: 14, color: Colors.grey[500]),
+                        const SizedBox(width: 4),
+                        Text(service.location, style: TextStyle(fontSize: 12, color: Colors.grey[500])),
                       ],
                     ),
                   ],
