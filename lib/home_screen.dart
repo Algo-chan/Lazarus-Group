@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'service_detail_screen.dart';
 import 'profile_screen.dart';
-import 'login_screen.dart';
-import 'signup_screen.dart';
 import 'api_service.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -88,11 +86,8 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   String _searchQuery = '';
   String _selectedCategory = 'All';
-  String _selectedLocation = 'All Areas';
   List<String> _categories = ['All'];
-  List<String> _locations = ['All Areas', 'Bole', 'CMC', 'Kazanchis', 'Old Airport', 'Sarbet', 'Piazza'];
   String _userName = 'Guest';
-  bool _isLoggedIn = false;
   
   @override
   void initState() {
@@ -104,18 +99,13 @@ class _HomeScreenState extends State<HomeScreen> {
     final cats = await ApiService.getCategories();
     final prefs = await SharedPreferences.getInstance();
     final userStr = prefs.getString('user');
-    final token = prefs.getString('token');
-    
-    setState(() {
-      _categories = cats;
-      _isLoggedIn = token != null;
-      if (userStr != null) {
-        final user = jsonDecode(userStr);
+    if (userStr != null) {
+      final user = jsonDecode(userStr);
+      setState(() {
         _userName = user['name'] ?? 'User';
-      } else {
-        _userName = 'Guest';
-      }
-    });
+      });
+    }
+    setState(() => _categories = cats);
   }
 
   @override
@@ -145,49 +135,24 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildAppBar() {
     return SliverAppBar(
-      expandedHeight: 140,
+      expandedHeight: 120,
       floating: true,
       pinned: true,
       elevation: 0,
-      backgroundColor: Colors.white,
-      surfaceTintColor: Colors.white,
-      title: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Expanded(
-            child: Column(
+      flexibleSpace: FlexibleSpaceBar(
+        background: Container(color: Colors.white),
+        titlePadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Text('Hello, ', style: TextStyle(fontSize: 14, color: Colors.grey[600])),
-                    Text(_userName, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF6C63FF))),
-                  ],
-                ),
-                const Text('Find Services', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF2D3436))),
+                Text('Hello, $_userName', style: const TextStyle(fontSize: 14, color: Colors.grey, fontWeight: FontWeight.normal)),
+                const Text('Find Services', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87)),
               ],
             ),
-          ),
-          if (!_isLoggedIn)
-            Row(
-              children: [
-                TextButton(
-                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const LoginScreen())),
-                  child: const Text('Sign In', style: TextStyle(color: Color(0xFF6C63FF), fontWeight: FontWeight.bold)),
-                ),
-                const SizedBox(width: 8),
-                ElevatedButton(
-                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const SignupScreen())),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    minimumSize: Size.zero,
-                  ),
-                  child: const Text('Sign Up', style: TextStyle(fontSize: 12)),
-                ),
-              ],
-            )
-          else
             GestureDetector(
               onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ProfileScreen())),
               child: CircleAvatar(
@@ -196,37 +161,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: const Icon(Icons.person, color: Color(0xFF6C63FF)),
               ),
             ),
-        ],
-      ),
-      bottom: PreferredSize(
-        preferredSize: const Size.fromHeight(40),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-          child: Row(
-            children: [
-              Icon(Icons.location_on_rounded, size: 16, color: Colors.grey[600]),
-              const SizedBox(width: 4),
-              DropdownButton<String>(
-                value: _selectedLocation,
-                icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
-                underline: const SizedBox(),
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF2D3436)),
-                onChanged: (String? newValue) {
-                  if (newValue != null) {
-                    setState(() {
-                      _selectedLocation = newValue;
-                    });
-                  }
-                },
-                items: _locations.map<DropdownMenuItem<String>>((String value) {
-                  return DropdownMenuItem<String>(
-                    value: value,
-                    child: Text(value),
-                  );
-                }).toList(),
-              ),
-            ],
-          ),
+          ],
         ),
       ),
     );
@@ -344,11 +279,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildServiceList() {
     return FutureBuilder<List<dynamic>>(
-      future: ApiService.getServices(
-        query: _searchQuery,
-        category: _selectedCategory,
-        location: _selectedLocation,
-      ),
+      future: ApiService.getServices(query: _searchQuery, category: _selectedCategory),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const SliverFillRemaining(child: Center(child: CircularProgressIndicator()));
