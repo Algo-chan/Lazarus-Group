@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:local_auth/local_auth.dart';
 import 'signup_screen.dart';
 import 'home_screen.dart';
 import 'api_service.dart';
@@ -14,7 +15,11 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final LocalAuthentication auth = LocalAuthentication();
+
   bool _isLoading = false;
+  bool _obscurePassword = true;
+  bool _rememberMe = false;
 
   @override
   void dispose() {
@@ -23,11 +28,20 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  // 🔐 Normal Login
   void _handleLogin() async {
     if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
       try {
-        await ApiService.login(_emailController.text, _passwordController.text);
+        await ApiService.login(
+          _emailController.text,
+          _passwordController.text,
+        );
+
+        if (_rememberMe) {
+          await ApiService.saveUserSession(_emailController.text);
+        }
+
         if (mounted) {
           Navigator.pushReplacement(
             context,
@@ -37,7 +51,10 @@ class _LoginScreenState extends State<LoginScreen> {
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+            SnackBar(
+              content: Text(e.toString()),
+              backgroundColor: Colors.red,
+            ),
           );
         }
       } finally {
@@ -46,155 +63,309 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  // 🔐 Biometric Login
+  Future<void> _loginWithBiometrics() async {
+    bool canCheck = await auth.canCheckBiometrics;
+
+    if (!canCheck) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Biometric not available")),
+      );
+      return;
+    }
+
+    bool authenticated = await auth.authenticate(
+      localizedReason: 'Login using biometrics',
+      options: const AuthenticationOptions(biometricOnly: true),
+    );
+
+    if (authenticated && mounted) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const HomeScreen()),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Stack(
-        children: [
-          // Background decorative element
-          Positioned(
-            top: -100,
-            right: -100,
-            child: Container(
-              width: 300,
-              height: 300,
-              decoration: BoxDecoration(
-                color: Theme.of(context).primaryColor.withOpacity(0.05),
-                shape: BoxShape.circle,
-              ),
-            ),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              Color(0xFF0F2027),
+              Color(0xFF203A43),
+              Color(0xFF2C5364)
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
-          SafeArea(
+        ),
+        child: SafeArea(
+          child: Center(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 40.0),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const SizedBox(height: 40),
-                    // Logo/Icon
-                    Center(
-                      child: Container(
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).primaryColor.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(24),
-                        ),
-                        child: Icon(Icons.handshake_rounded, size: 60, color: Theme.of(context).primaryColor),
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                children: [
+                  const SizedBox(height: 20),
+
+                  // 🔥 Logo
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.handshake_rounded,
+                        size: 60, color: Colors.white),
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  const Text(
+                    "Welcome Back",
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+
+                  const SizedBox(height: 8),
+
+                  const Text(
+                    "Login to continue",
+                    style: TextStyle(color: Colors.white70),
+                  ),
+
+                  const SizedBox(height: 32),
+
+                  // 🧊 Glass Card
+                  Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.2),
                       ),
                     ),
-                    const SizedBox(height: 32),
-                    Text(
-                      'Welcome Back',
-                      style: Theme.of(context).textTheme.displayLarge,
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Log in to find verified local services',
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.grey),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 48),
-                    
-                    // Email Field
-                    TextFormField(
-                      controller: _emailController,
-                      keyboardType: TextInputType.emailAddress,
-                      decoration: const InputDecoration(
-                        hintText: 'Email Address',
-                        prefixIcon: Icon(Icons.email_outlined),
-                      ),
-                      validator: (value) => (value == null || !value.contains('@')) ? 'Enter a valid email' : null,
-                    ),
-                    const SizedBox(height: 20),
-                    
-                    // Password Field
-                    TextFormField(
-                      controller: _passwordController,
-                      obscureText: true,
-                      decoration: const InputDecoration(
-                        hintText: 'Password',
-                        prefixIcon: Icon(Icons.lock_outline),
-                      ),
-                      validator: (value) => (value == null || value.length < 4) ? 'Enter your password' : null,
-                    ),
-                    const SizedBox(height: 12),
-                    
-                    // Forgot Password
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: TextButton(
-                        onPressed: () {},
-                        child: Text('Forgot Password?', style: TextStyle(color: Theme.of(context).primaryColor, fontWeight: FontWeight.bold)),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    
-                    // Login Button
-                    ElevatedButton(
-                      onPressed: _isLoading ? null : _handleLogin,
-                      child: _isLoading 
-                        ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                        : const Text('LOG IN'),
-                    ),
-                    const SizedBox(height: 24),
-                    
-                    // Or divider
-                    Row(
-                      children: [
-                        const Expanded(child: Divider()),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: Text('OR', style: TextStyle(color: Colors.grey[400], fontWeight: FontWeight.bold, fontSize: 12)),
-                        ),
-                        const Expanded(child: Divider()),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-                    
-                    // Continue as Guest
-                    OutlinedButton(
-                      onPressed: () async {
-                        await ApiService.setGuestMode();
-                        if (mounted) {
-                          Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const HomeScreen()));
-                        }
-                      },
-                      style: OutlinedButton.styleFrom(
-                        side: BorderSide(color: Colors.grey.withOpacity(0.2)),
-                        padding: const EdgeInsets.symmetric(vertical: 18),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
                         children: [
-                          Icon(Icons.person_outline, color: Colors.grey[700], size: 20),
-                          const SizedBox(width: 12),
-                          Text('CONTINUE AS GUEST', style: TextStyle(color: Colors.grey[700], fontWeight: FontWeight.bold)),
+                          // Email
+                          TextFormField(
+                            controller: _emailController,
+                            style:
+                                const TextStyle(color: Colors.white),
+                            decoration: InputDecoration(
+                              hintText: "Email",
+                              hintStyle: const TextStyle(
+                                  color: Colors.white54),
+                              prefixIcon: const Icon(Icons.email,
+                                  color: Colors.white70),
+                              filled: true,
+                              fillColor:
+                                  Colors.white.withOpacity(0.05),
+                              border: OutlineInputBorder(
+                                borderRadius:
+                                    BorderRadius.circular(16),
+                                borderSide: BorderSide.none,
+                              ),
+                            ),
+                            validator: (value) =>
+                                (value == null ||
+                                        !value.contains('@'))
+                                    ? 'Enter valid email'
+                                    : null,
+                          ),
+
+                          const SizedBox(height: 20),
+
+                          // Password
+                          TextFormField(
+                            controller: _passwordController,
+                            obscureText: _obscurePassword,
+                            style:
+                                const TextStyle(color: Colors.white),
+                            decoration: InputDecoration(
+                              hintText: "Password",
+                              hintStyle: const TextStyle(
+                                  color: Colors.white54),
+                              prefixIcon: const Icon(Icons.lock,
+                                  color: Colors.white70),
+                              suffixIcon: IconButton(
+                                icon: Icon(
+                                  _obscurePassword
+                                      ? Icons.visibility_off
+                                      : Icons.visibility,
+                                  color: Colors.white70,
+                                ),
+                                onPressed: () {
+                                  setState(() {
+                                    _obscurePassword =
+                                        !_obscurePassword;
+                                  });
+                                },
+                              ),
+                              filled: true,
+                              fillColor:
+                                  Colors.white.withOpacity(0.05),
+                              border: OutlineInputBorder(
+                                borderRadius:
+                                    BorderRadius.circular(16),
+                                borderSide: BorderSide.none,
+                              ),
+                            ),
+                            validator: (value) =>
+                                (value == null ||
+                                        value.length < 4)
+                                    ? 'Enter password'
+                                    : null,
+                          ),
+
+                          const SizedBox(height: 12),
+
+                          // Remember + Forgot
+                          Row(
+                            mainAxisAlignment:
+                                MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  Checkbox(
+                                    value: _rememberMe,
+                                    onChanged: (value) {
+                                      setState(() {
+                                        _rememberMe = value!;
+                                      });
+                                    },
+                                  ),
+                                  const Text("Remember",
+                                      style: TextStyle(
+                                          color: Colors.white70)),
+                                ],
+                              ),
+                              TextButton(
+                                onPressed: () {},
+                                child: const Text("Forgot?",
+                                    style: TextStyle(
+                                        color: Colors.white70)),
+                              )
+                            ],
+                          ),
+
+                          const SizedBox(height: 16),
+
+                          // 🚀 Login Button
+                          GestureDetector(
+                            onTap: _isLoading
+                                ? null
+                                : _handleLogin,
+                            child: Container(
+                              width: double.infinity,
+                              padding:
+                                  const EdgeInsets.symmetric(
+                                      vertical: 16),
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  colors: [
+                                    Color(0xFF00c6ff),
+                                    Color(0xFF0072ff)
+                                  ],
+                                ),
+                                borderRadius:
+                                    BorderRadius.circular(16),
+                              ),
+                              child: Center(
+                                child: _isLoading
+                                    ? const CircularProgressIndicator(
+                                        color: Colors.white)
+                                    : const Text(
+                                        "LOGIN",
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontWeight:
+                                              FontWeight.bold,
+                                        ),
+                                      ),
+                              ),
+                            ),
+                          ),
+
+                          const SizedBox(height: 16),
+
+                          // 🔐 Biometric
+                          OutlinedButton.icon(
+                            onPressed: _loginWithBiometrics,
+                            icon: const Icon(Icons.fingerprint,
+                                color: Colors.white),
+                            label: const Text("Biometric Login",
+                                style: TextStyle(
+                                    color: Colors.white)),
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(
+                                  color: Colors.white24),
+                            ),
+                          ),
                         ],
                       ),
                     ),
-                    
-                    const SizedBox(height: 32),
-                    // Sign Up link
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Text("Don't have an account? ", style: TextStyle(color: Colors.grey)),
-                        GestureDetector(
-                          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const SignupScreen())),
-                          child: Text('Sign Up', style: TextStyle(color: Theme.of(context).primaryColor, fontWeight: FontWeight.bold)),
-                        ),
-                      ],
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // Guest
+                  TextButton(
+                    onPressed: () async {
+                      await ApiService.setGuestMode();
+                      if (mounted) {
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) =>
+                                  const HomeScreen()),
+                        );
+                      }
+                    },
+                    child: const Text(
+                      "Continue as Guest",
+                      style: TextStyle(color: Colors.white70),
                     ),
-                  ],
-                ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Signup
+                  Row(
+                    mainAxisAlignment:
+                        MainAxisAlignment.center,
+                    children: [
+                      const Text("No account?",
+                          style: TextStyle(
+                              color: Colors.white70)),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) =>
+                                    const SignupScreen()),
+                          );
+                        },
+                        child: const Text("Sign Up",
+                            style: TextStyle(
+                                color: Colors.white)),
+                      )
+                    ],
+                  ),
+                ],
               ),
             ),
           ),
-        ],
+        ),
       ),
     );
   }
