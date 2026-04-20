@@ -92,7 +92,7 @@ class LocalServiceApp extends StatelessWidget {
           margin: const EdgeInsets.only(bottom: 16),
         ),
       ),
-      home: isLoggedIn ? const HomeScreen() : const LoginScreen(),
+      home: const HomeScreen(),
     );
   }
 }

@@ -59,12 +59,13 @@ class ApiService {
     await prefs.setBool('isGuest', true);
   }
 
-  static Future<List<dynamic>> getServices({String? query, String? category}) async {
+  static Future<List<dynamic>> getServices({String? query, String? category, String? location}) async {
     try {
       String url = '$baseUrl/services';
       Map<String, String> params = {};
       if (query != null && query.isNotEmpty) params['query'] = query;
       if (category != null && category != 'All') params['category'] = category;
+      if (location != null && location != 'All Areas') params['location'] = location;
       
       if (params.isNotEmpty) {
         url += '?' + Uri(queryParameters: params).query;
