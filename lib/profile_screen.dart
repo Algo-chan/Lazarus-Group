@@ -45,11 +45,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text('My Profile'),
-        backgroundColor: Colors.white,
+        backgroundColor: theme.appBarTheme.backgroundColor,
+        foregroundColor: theme.appBarTheme.foregroundColor,
       ),
       body: SingleChildScrollView(
         child: Column(
@@ -59,7 +61,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 32),
-              color: Colors.white,
+              color: theme.cardTheme.color,
               child: Column(
                 children: [
                   CircleAvatar(
@@ -74,12 +76,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   const SizedBox(height: 16),
                   Text(
                     _userName,
-                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     _userEmail,
-                    style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                    style: TextStyle(fontSize: 16, color: theme.textTheme.bodyMedium?.color),
                   ),
                 ],
               ),
@@ -88,15 +90,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(height: 16),
             // Menu Options
             Container(
-              color: Colors.white,
+              color: theme.cardTheme.color,
               child: Column(
                 children: [
                   _MenuTile(icon: Icons.history, label: 'My Enquiries', onTap: () {}),
-                  const Divider(indent: 56, height: 1),
+                  Divider(indent: 56, height: 1, color: theme.dividerColor.withOpacity(0.1)),
                   _MenuTile(icon: Icons.favorite_border, label: 'Shortlisted Services', onTap: () {}),
-                  const Divider(indent: 56, height: 1),
+                  Divider(indent: 56, height: 1, color: theme.dividerColor.withOpacity(0.1)),
                   _MenuTile(icon: Icons.settings_outlined, label: 'Settings', onTap: () {}),
-                  const Divider(indent: 56, height: 1),
+                  Divider(indent: 56, height: 1, color: theme.dividerColor.withOpacity(0.1)),
                   _MenuTile(icon: Icons.help_outline, label: 'Help & Support', onTap: () {}),
                 ],
               ),
@@ -147,7 +149,7 @@ class _MenuTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      leading: Icon(icon, color: const Color(0xFF2D3436)),
+      leading: Icon(icon, color: Theme.of(context).colorScheme.onSurface),
       title: Text(label, style: const TextStyle(fontWeight: FontWeight.w500)),
       trailing: const Icon(Icons.chevron_right, size: 20),
       onTap: onTap,

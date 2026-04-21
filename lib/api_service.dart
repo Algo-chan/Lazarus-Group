@@ -113,6 +113,11 @@ class ApiService {
     return prefs.getBool('isGuest') ?? false;
   }
 
+  static Future<void> saveUserSession(String email) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('remembered_email', email);
+  }
+
   static final List<Map<String, dynamic>> mockServices = [
     {
       'id': '1',

@@ -54,9 +54,14 @@ class _SignupScreenState extends State<SignupScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(backgroundColor: Colors.white, iconTheme: const IconThemeData(color: Colors.black)),
+      backgroundColor: theme.scaffoldBackgroundColor,
+      appBar: AppBar(
+        backgroundColor: theme.appBarTheme.backgroundColor,
+        foregroundColor: theme.appBarTheme.foregroundColor,
+        iconTheme: IconThemeData(color: theme.colorScheme.onSurface),
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
@@ -67,12 +72,12 @@ class _SignupScreenState extends State<SignupScreen> {
               children: [
                 Text(
                   'Create Account',
-                  style: Theme.of(context).textTheme.displayLarge,
+                  style: theme.textTheme.displayLarge,
                 ),
                 const SizedBox(height: 8),
                 Text(
                   'Sign up to get started with LocalConnect',
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.grey),
+                  style: theme.textTheme.bodyLarge?.copyWith(color: Colors.grey),
                 ),
                 const SizedBox(height: 40),
                 
@@ -127,7 +132,7 @@ class _SignupScreenState extends State<SignupScreen> {
                     const Text("Already have an account? ", style: TextStyle(color: Colors.grey)),
                     GestureDetector(
                       onTap: () => Navigator.pop(context),
-                      child: Text('Log In', style: TextStyle(color: Theme.of(context).primaryColor, fontWeight: FontWeight.bold)),
+                      child: Text('Log In', style: TextStyle(color: theme.primaryColor, fontWeight: FontWeight.bold)),
                     ),
                   ],
                 ),

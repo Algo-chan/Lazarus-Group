@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:local_auth/local_auth.dart';
 import 'signup_screen.dart';
 import 'home_screen.dart';
@@ -65,25 +66,42 @@ class _LoginScreenState extends State<LoginScreen> {
 
   // 🔐 Biometric Login
   Future<void> _loginWithBiometrics() async {
-    bool canCheck = await auth.canCheckBiometrics;
-
-    if (!canCheck) {
+    if (kIsWeb) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Biometric not available")),
+        const SnackBar(content: Text("Biometric login is not supported on Web")),
       );
       return;
     }
 
-    bool authenticated = await auth.authenticate(
-      localizedReason: 'Login using biometrics',
-      options: const AuthenticationOptions(biometricOnly: true),
-    );
+    try {
+      bool canCheck = await auth.canCheckBiometrics;
 
-    if (authenticated && mounted) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const HomeScreen()),
+      if (!canCheck) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Biometric not available")),
+          );
+        }
+        return;
+      }
+
+      bool authenticated = await auth.authenticate(
+        localizedReason: 'Login using biometrics',
+        options: const AuthenticationOptions(biometricOnly: true),
       );
+
+      if (authenticated && mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const HomeScreen()),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Biometric Error: $e")),
+        );
+      }
     }
   }
 

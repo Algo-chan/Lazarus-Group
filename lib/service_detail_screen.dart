@@ -8,8 +8,9 @@ class ServiceDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: CustomScrollView(
         slivers: [
           _buildSliverAppBar(context),
@@ -25,7 +26,7 @@ class ServiceDetailScreen extends StatelessWidget {
                       Expanded(
                         child: Text(
                           category.name,
-                          style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFF2D3436)),
+                          style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface),
                         ),
                       ),
                       if (category.verified)
@@ -58,7 +59,7 @@ class ServiceDetailScreen extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF1F2F6),
+                      color: theme.inputDecorationTheme.fillColor,
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Row(
@@ -100,22 +101,22 @@ class ServiceDetailScreen extends StatelessWidget {
                   const SizedBox(height: 32),
 
                   // Description
-                  const Text('Service Description', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF2D3436))),
+                  Text('Service Description', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface)),
                   const SizedBox(height: 12),
                   Text(
                     category.description,
-                    style: TextStyle(fontSize: 16, color: Colors.grey[700], height: 1.6),
+                    style: TextStyle(fontSize: 16, color: theme.textTheme.bodyMedium?.color, height: 1.6),
                   ),
                   const SizedBox(height: 32),
 
                   // Location
-                  const Text('Location', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF2D3436))),
+                  Text('Location', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface)),
                   const SizedBox(height: 12),
                   Row(
                     children: [
                       const Icon(Icons.location_on_outlined, color: Colors.grey, size: 20),
                       const SizedBox(width: 8),
-                      Text(category.location, style: TextStyle(fontSize: 16, color: Colors.grey[700])),
+                      Text(category.location, style: TextStyle(fontSize: 16, color: theme.textTheme.bodyMedium?.color)),
                     ],
                   ),
                   const SizedBox(height: 32),
@@ -124,7 +125,7 @@ class ServiceDetailScreen extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('Recent Reviews', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF2D3436))),
+                      Text('Recent Reviews', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface)),
                       TextButton(onPressed: () {}, child: const Text('View All')),
                     ],
                   ),
@@ -148,13 +149,13 @@ class ServiceDetailScreen extends StatelessWidget {
       expandedHeight: 300,
       pinned: true,
       elevation: 0,
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       leading: Padding(
         padding: const EdgeInsets.all(8.0),
         child: CircleAvatar(
-          backgroundColor: Colors.white.withOpacity(0.9),
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor.withOpacity(0.9),
           child: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.black),
+            icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onSurface),
             onPressed: () => Navigator.pop(context),
           ),
         ),
@@ -180,10 +181,11 @@ class ServiceDetailScreen extends StatelessWidget {
   }
 
   Widget _buildBottomBar(BuildContext context) {
+    final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardTheme.color,
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 20, offset: const Offset(0, -5))],
       ),
       child: Row(
@@ -236,7 +238,7 @@ class _ActionButton extends StatelessWidget {
               child: Icon(icon, color: color, size: 24),
             ),
             const SizedBox(height: 8),
-            Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF2D3436))),
+            Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface)),
           ],
         ),
       ),
@@ -254,11 +256,12 @@ class _ReviewTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        border: Border.all(color: const Color(0xFFF1F2F6)),
+        border: Border.all(color: theme.dividerColor.withOpacity(0.1)),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
@@ -280,7 +283,7 @@ class _ReviewTile extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          Text(comment, style: TextStyle(color: Colors.grey[700], height: 1.4)),
+          Text(comment, style: TextStyle(color: theme.textTheme.bodyMedium?.color, height: 1.4)),
         ],
       ),
     );

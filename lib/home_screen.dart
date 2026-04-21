@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'service_detail_screen.dart';
 import 'profile_screen.dart';
 import 'api_service.dart';
+import 'theme_provider.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -140,7 +141,7 @@ class _HomeScreenState extends State<HomeScreen> {
       pinned: true,
       elevation: 0,
       flexibleSpace: FlexibleSpaceBar(
-        background: Container(color: Colors.white),
+        background: Container(color: Theme.of(context).scaffoldBackgroundColor),
         titlePadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         title: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -150,16 +151,38 @@ class _HomeScreenState extends State<HomeScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('Hello, $_userName', style: const TextStyle(fontSize: 14, color: Colors.grey, fontWeight: FontWeight.normal)),
-                const Text('Find Services', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87)),
+                Text('Find Services', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface)),
               ],
             ),
-            GestureDetector(
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ProfileScreen())),
-              child: CircleAvatar(
-                radius: 20,
-                backgroundColor: Theme.of(context).primaryColor.withOpacity(0.1),
-                child: const Icon(Icons.person, color: Color(0xFF6C63FF)),
-              ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ValueListenableBuilder<ThemeMode>(
+                  valueListenable: themeNotifier,
+                  builder: (context, mode, _) {
+                    return IconButton(
+                      onPressed: () {
+                        themeNotifier.value = mode == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
+                      },
+                      icon: Icon(
+                        mode == ThemeMode.light ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
+                        color: Theme.of(context).primaryColor,
+                      ),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    );
+                  },
+                ),
+                const SizedBox(width: 12),
+                GestureDetector(
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ProfileScreen())),
+                  child: CircleAvatar(
+                    radius: 20,
+                    backgroundColor: Theme.of(context).primaryColor.withOpacity(0.1),
+                    child: const Icon(Icons.person, color: Color(0xFF6C63FF)),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -194,7 +217,7 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF2D3436))),
+          Text(title, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface)),
           TextButton(
             onPressed: onSeeAll,
             child: const Text('See All', style: TextStyle(color: Color(0xFF6C63FF), fontWeight: FontWeight.bold)),
@@ -240,7 +263,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                      color: isSelected ? color : Colors.grey[700],
+                      color: isSelected ? color : Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                     ),
                     textAlign: TextAlign.center,
                     maxLines: 1,
