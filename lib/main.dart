@@ -4,19 +4,41 @@ import 'home_screen.dart';
 import 'api_service.dart';
 import 'theme_provider.dart';
 
-void main() async {
+void main() {
+  // 1. Immediately show a loading screen so it's not "blank"
+  runApp(const MaterialApp(
+    debugShowCheckedModeBanner: false,
+    home: Scaffold(
+      body: Center(
+        child: CircularProgressIndicator(),
+      ),
+    ),
+  ));
+
+  // 2. Perform async initialization
+  _initApp();
+}
+
+Future<void> _initApp() async {
+  debugPrint('--- APP INITIALIZING ---');
   try {
     WidgetsFlutterBinding.ensureInitialized();
+    
     bool loggedIn = false;
     try {
-      loggedIn = await ApiService.isLoggedIn();
+      loggedIn = await ApiService.isLoggedIn().timeout(const Duration(seconds: 2));
     } catch (e) {
-      debugPrint('Error checking login status: $e');
+      debugPrint('Initialization warning: $e');
     }
+    
     runApp(LocalServiceApp(isLoggedIn: loggedIn));
   } catch (e) {
-    debugPrint('Fatal error in main: $e');
-    runApp(MaterialApp(home: Scaffold(body: Center(child: Text('Error starting app: $e')))));
+    debugPrint('Fatal error during init: $e');
+    runApp(MaterialApp(
+      home: Scaffold(
+        body: Center(child: Text('Fatal Error: $e')),
+      ),
+    ));
   }
 }
 
@@ -26,13 +48,16 @@ class LocalServiceApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    debugPrint('Building LocalServiceApp (isLoggedIn: $isLoggedIn)');
     return ValueListenableBuilder<ThemeMode>(
       valueListenable: themeNotifier,
-      builder: (_, mode, __) {
+      builder: (context, mode, __) {
+        debugPrint('Building MaterialApp with mode: $mode');
         return MaterialApp(
           title: 'LocalConnect',
           debugShowCheckedModeBanner: false,
           themeMode: mode,
+          // ... rest of theme configuration remains same ...
           theme: ThemeData(
             useMaterial3: true,
             primaryColor: const Color(0xFF6C63FF),

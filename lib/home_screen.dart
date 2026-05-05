@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'service_detail_screen.dart';
 import 'profile_screen.dart';
 import 'api_service.dart';
+import 'login_screen.dart';
 import 'theme_provider.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -111,7 +112,69 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    debugPrint('HomeScreen: Building build()');
     return Scaffold(
+      drawer: Drawer(
+        // ... drawer content ...
+        child: Column(
+          children: [
+            UserAccountsDrawerHeader(
+              currentAccountPicture: CircleAvatar(
+                backgroundColor: Colors.white,
+                child: Text(
+                  _userName[0].toUpperCase(),
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Theme.of(context).primaryColor),
+                ),
+              ),
+              accountName: Text(_userName, style: const TextStyle(fontWeight: FontWeight.bold)),
+              accountEmail: const Text('user@example.com'), // Replace with actual email if available
+              decoration: BoxDecoration(
+                color: Theme.of(context).primaryColor,
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.home_rounded),
+              title: const Text('Home'),
+              onTap: () => Navigator.pop(context),
+            ),
+            ListTile(
+              leading: const Icon(Icons.person_rounded),
+              title: const Text('Profile'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (context) => const ProfileScreen()));
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.history_rounded),
+              title: const Text('My Bookings'),
+              onTap: () => Navigator.pop(context),
+            ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.settings_rounded),
+              title: const Text('Settings'),
+              onTap: () => Navigator.pop(context),
+            ),
+            const Spacer(),
+            ListTile(
+              leading: const Icon(Icons.logout_rounded, color: Colors.red),
+              title: const Text('Logout', style: TextStyle(color: Colors.red)),
+              onTap: () async {
+                await ApiService.logout();
+                if (mounted) {
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (context) => const LoginScreen()),
+                    (route) => false,
+                  );
+                }
+              },
+            ),
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
       body: CustomScrollView(
         slivers: [
           _buildAppBar(),
@@ -136,56 +199,62 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildAppBar() {
     return SliverAppBar(
-      expandedHeight: 120,
+      expandedHeight: 140,
       floating: true,
       pinned: true,
       elevation: 0,
+      leading: Builder(
+        builder: (context) => IconButton(
+          icon: const Icon(Icons.menu_rounded),
+          onPressed: () => Scaffold.of(context).openDrawer(),
+        ),
+      ),
+      actions: [
+        ValueListenableBuilder<ThemeMode>(
+          valueListenable: themeNotifier,
+          builder: (context, mode, _) {
+            return IconButton(
+              onPressed: () {
+                themeNotifier.value = mode == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
+              },
+              icon: Icon(
+                mode == ThemeMode.light ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
+              ),
+            );
+          },
+        ),
+        IconButton(
+          onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ProfileScreen())),
+          icon: const Icon(Icons.person_outline_rounded),
+        ),
+        const SizedBox(width: 8),
+      ],
       flexibleSpace: FlexibleSpaceBar(
-        background: Container(color: Theme.of(context).scaffoldBackgroundColor),
-        titlePadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        title: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        centerTitle: false,
+        titlePadding: const EdgeInsets.only(left: 56, bottom: 16),
+        title: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Hello, $_userName', style: const TextStyle(fontSize: 14, color: Colors.grey, fontWeight: FontWeight.normal)),
-                Text('Find Services', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface)),
-              ],
+            Text(
+              'Hello, $_userName',
+              style: TextStyle(
+                fontSize: 12,
+                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                fontWeight: FontWeight.normal,
+              ),
             ),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ValueListenableBuilder<ThemeMode>(
-                  valueListenable: themeNotifier,
-                  builder: (context, mode, _) {
-                    return IconButton(
-                      onPressed: () {
-                        themeNotifier.value = mode == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
-                      },
-                      icon: Icon(
-                        mode == ThemeMode.light ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
-                        color: Theme.of(context).primaryColor,
-                      ),
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                    );
-                  },
-                ),
-                const SizedBox(width: 12),
-                GestureDetector(
-                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ProfileScreen())),
-                  child: CircleAvatar(
-                    radius: 20,
-                    backgroundColor: Theme.of(context).primaryColor.withOpacity(0.1),
-                    child: const Icon(Icons.person, color: Color(0xFF6C63FF)),
-                  ),
-                ),
-              ],
+            Text(
+              'Find Services',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
             ),
           ],
         ),
+        background: Container(color: Theme.of(context).scaffoldBackgroundColor),
       ),
     );
   }
