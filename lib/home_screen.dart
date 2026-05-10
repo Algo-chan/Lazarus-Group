@@ -86,6 +86,9 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  final ScrollController _scrollController = ScrollController();
+  bool _isScrolled = false;
+  int _currentIndex = 0;
   String _searchQuery = '';
   String _selectedCategory = 'All';
   List<String> _categories = ['All'];
@@ -95,6 +98,22 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _loadData();
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.offset > 50 && !_isScrolled) {
+      setState(() => _isScrolled = true);
+    } else if (_scrollController.offset <= 50 && _isScrolled) {
+      setState(() => _isScrolled = false);
+    }
   }
 
   void _loadData() async {
@@ -114,68 +133,53 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     debugPrint('HomeScreen: Building build()');
     return Scaffold(
+      extendBody: true,
       drawer: Drawer(
-        // ... drawer content ...
         child: Column(
           children: [
             UserAccountsDrawerHeader(
               currentAccountPicture: CircleAvatar(
                 backgroundColor: Colors.white,
                 child: Text(
-                  _userName[0].toUpperCase(),
+                  _userName.isNotEmpty ? _userName[0].toUpperCase() : 'G',
                   style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Theme.of(context).primaryColor),
                 ),
               ),
               accountName: Text(_userName, style: const TextStyle(fontWeight: FontWeight.bold)),
-              accountEmail: const Text('user@example.com'), // Replace with actual email if available
+              accountEmail: const Text('user@example.com'),
               decoration: BoxDecoration(
-                color: Theme.of(context).primaryColor,
+                gradient: LinearGradient(
+                  colors: [Theme.of(context).primaryColor, Theme.of(context).primaryColor.withOpacity(0.8)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
               ),
             ),
-            ListTile(
-              leading: const Icon(Icons.home_rounded),
-              title: const Text('Home'),
-              onTap: () => Navigator.pop(context),
-            ),
-            ListTile(
-              leading: const Icon(Icons.person_rounded),
-              title: const Text('Profile'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (context) => const ProfileScreen()));
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.history_rounded),
-              title: const Text('My Bookings'),
-              onTap: () => Navigator.pop(context),
-            ),
-            const Divider(),
-            ListTile(
-              leading: const Icon(Icons.settings_rounded),
-              title: const Text('Settings'),
-              onTap: () => Navigator.pop(context),
-            ),
+            _buildDrawerItem(Icons.home_rounded, 'Home', () => Navigator.pop(context), true),
+            _buildDrawerItem(Icons.person_rounded, 'Profile', () {
+              Navigator.pop(context);
+              Navigator.push(context, MaterialPageRoute(builder: (context) => const ProfileScreen()));
+            }),
+            _buildDrawerItem(Icons.history_rounded, 'My Bookings', () => Navigator.pop(context)),
+            const Divider(indent: 20, endIndent: 20),
+            _buildDrawerItem(Icons.settings_rounded, 'Settings', () => Navigator.pop(context)),
             const Spacer(),
-            ListTile(
-              leading: const Icon(Icons.logout_rounded, color: Colors.red),
-              title: const Text('Logout', style: TextStyle(color: Colors.red)),
-              onTap: () async {
-                await ApiService.logout();
-                if (mounted) {
-                  Navigator.pushAndRemoveUntil(
-                    context,
-                    MaterialPageRoute(builder: (context) => const LoginScreen()),
-                    (route) => false,
-                  );
-                }
-              },
-            ),
-            const SizedBox(height: 20),
+            _buildDrawerItem(Icons.logout_rounded, 'Logout', () async {
+              await ApiService.logout();
+              if (mounted) {
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (context) => const LoginScreen()),
+                  (route) => false,
+                );
+              }
+            }, false, Colors.red),
+            const SizedBox(height: 40),
           ],
         ),
       ),
       body: CustomScrollView(
+        controller: _scrollController,
         slivers: [
           _buildAppBar(),
           SliverToBoxAdapter(
@@ -192,17 +196,33 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           _buildServiceList(),
+          const SliverToBoxAdapter(child: SizedBox(height: 100)),
         ],
       ),
+      bottomNavigationBar: _buildBottomNavigationBar(),
+    );
+  }
+
+  Widget _buildDrawerItem(IconData icon, String title, VoidCallback onTap, [bool isSelected = false, Color? color]) {
+    return ListTile(
+      leading: Icon(icon, color: color ?? (isSelected ? Theme.of(context).primaryColor : null)),
+      title: Text(title, style: TextStyle(color: color, fontWeight: isSelected ? FontWeight.bold : null)),
+      onTap: onTap,
+      selected: isSelected,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 24),
     );
   }
 
   Widget _buildAppBar() {
     return SliverAppBar(
-      expandedHeight: 140,
+      expandedHeight: 160,
       floating: true,
       pinned: true,
-      elevation: 0,
+      elevation: _isScrolled ? 2 : 0,
+      backgroundColor: _isScrolled 
+          ? Theme.of(context).scaffoldBackgroundColor 
+          : Colors.transparent,
       leading: Builder(
         builder: (context) => IconButton(
           icon: const Icon(Icons.menu_rounded),
@@ -214,47 +234,155 @@ class _HomeScreenState extends State<HomeScreen> {
           valueListenable: themeNotifier,
           builder: (context, mode, _) {
             return IconButton(
-              onPressed: () {
-                themeNotifier.value = mode == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
-              },
-              icon: Icon(
-                mode == ThemeMode.light ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
+              onPressed: () => ThemeManager.toggleTheme(),
+              icon: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 300),
+                child: Icon(
+                  mode == ThemeMode.light ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
+                  key: ValueKey(mode),
+                ),
               ),
             );
           },
         ),
         IconButton(
           onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ProfileScreen())),
-          icon: const Icon(Icons.person_outline_rounded),
+          icon: const Icon(Icons.notifications_none_rounded),
         ),
         const SizedBox(width: 8),
       ],
       flexibleSpace: FlexibleSpaceBar(
+        stretchModes: const [StretchMode.blurBackground, StretchMode.zoomBackground],
         centerTitle: false,
-        titlePadding: const EdgeInsets.only(left: 56, bottom: 16),
-        title: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
+        titlePadding: EdgeInsets.lerp(
+          const EdgeInsets.only(left: 56, bottom: 16),
+          const EdgeInsets.only(left: 56, bottom: 14),
+          _isScrolled ? 1 : 0,
+        ),
+        title: AnimatedOpacity(
+          duration: const Duration(milliseconds: 200),
+          opacity: 1.0,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (!_isScrolled)
+                Text(
+                  'Welcome, $_userName',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              Text(
+                _isScrolled ? 'LocalConnect' : 'Discover Services',
+                style: TextStyle(
+                  fontSize: _isScrolled ? 18 : 20,
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
+              ),
+            ],
+          ),
+        ),
+        background: Stack(
+          fit: StackFit.expand,
           children: [
-            Text(
-              'Hello, $_userName',
-              style: TextStyle(
-                fontSize: 12,
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                fontWeight: FontWeight.normal,
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Theme.of(context).primaryColor.withOpacity(0.1),
+                    Theme.of(context).scaffoldBackgroundColor,
+                  ],
+                ),
               ),
             ),
-            Text(
-              'Find Services',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).colorScheme.onSurface,
+            Positioned(
+              right: -50,
+              top: -20,
+              child: Container(
+                width: 150,
+                height: 150,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).primaryColor.withOpacity(0.05),
+                  shape: BoxShape.circle,
+                ),
               ),
             ),
           ],
         ),
-        background: Container(color: Theme.of(context).scaffoldBackgroundColor),
+      ),
+    );
+  }
+
+  Widget _buildBottomNavigationBar() {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+      height: 70,
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface.withOpacity(0.9),
+        borderRadius: BorderRadius.circular(30),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+        border: Border.all(color: Colors.white.withOpacity(0.2)),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(30),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            _buildNavItem(0, Icons.explore_rounded, 'Explore'),
+            _buildNavItem(1, Icons.search_rounded, 'Search'),
+            _buildNavItem(2, Icons.calendar_today_rounded, 'Bookings'),
+            _buildNavItem(3, Icons.person_rounded, 'Profile'),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNavItem(int index, IconData icon, String label) {
+    final isSelected = _currentIndex == index;
+    return GestureDetector(
+      onTap: () => setState(() => _currentIndex = index),
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? Theme.of(context).primaryColor.withOpacity(0.1) : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              color: isSelected ? Theme.of(context).primaryColor : Colors.grey,
+              size: 26,
+            ),
+            if (isSelected)
+              Container(
+                margin: const EdgeInsets.only(top: 4),
+                width: 4,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).primaryColor,
+                  shape: BoxShape.circle,
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
