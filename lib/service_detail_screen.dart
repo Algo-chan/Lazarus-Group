@@ -9,204 +9,199 @@ class ServiceDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    const primaryBlue = Color(0xFF007BFF);
+    const accentOrange = Color(0xFFF47E20);
+
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
-      body: CustomScrollView(
-        slivers: [
-          _buildSliverAppBar(context),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: const Text('Service Details'),
+        actions: [
+          IconButton(icon: const Icon(Icons.share_outlined), onPressed: () {}),
+          IconButton(icon: const Icon(Icons.favorite_border), onPressed: () {}),
+        ],
+      ),
+      body: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Business Header
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Title & Verification
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
                           category.name,
-                          style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface),
+                          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                         ),
-                      ),
-                      if (category.verified)
-                        const Icon(Icons.verified_rounded, color: Colors.blue, size: 30),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  
-                  // Provider & Rating
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(color: Colors.green.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
-                        child: Row(
+                        const SizedBox(height: 8),
+                        Row(
                           children: [
-                            const Icon(Icons.star_rounded, color: Colors.green, size: 18),
-                            const SizedBox(width: 4),
-                            Text(category.rating.toString(), style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.green,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Row(
+                                children: [
+                                  Text(
+                                    category.rating.toString(),
+                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                                  ),
+                                  const Icon(Icons.star, color: Colors.white, size: 12),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              '${category.reviewsCount} Ratings',
+                              style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                            ),
+                            if (category.verified) ...[
+                              const SizedBox(width: 8),
+                              const Icon(Icons.verified, color: Colors.blue, size: 18),
+                            ],
                           ],
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Text('${category.reviewsCount} verified reviews', style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.w500)),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                  
-                  // Service Provider Card
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: theme.inputDecorationTheme.fillColor,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(
-                      children: [
-                        CircleAvatar(
-                          radius: 24,
-                          backgroundColor: category.themeColor.withOpacity(0.2),
-                          child: Icon(category.icon, color: category.themeColor),
+                        const SizedBox(height: 8),
+                        Text(
+                          category.location,
+                          style: TextStyle(fontSize: 14, color: Colors.grey[700]),
                         ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(category.provider, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                              const Text('Professional Service Provider', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                            ],
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.chevron_right_rounded),
-                          onPressed: () {},
+                        const SizedBox(height: 4),
+                        const Text(
+                          'Open until 8:00 PM',
+                          style: TextStyle(fontSize: 14, color: Colors.green, fontWeight: FontWeight.w500),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 32),
-
-                  // Quick Action Buttons
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      _ActionButton(icon: Icons.call_rounded, label: 'Call', color: Colors.blue, onTap: () {}),
-                      _ActionButton(icon: Icons.chat_bubble_rounded, label: 'Chat', color: Colors.green, onTap: () {}),
-                      _ActionButton(icon: Icons.location_on_rounded, label: 'Map', color: Colors.orange, onTap: () {}),
-                      _ActionButton(icon: Icons.share_rounded, label: 'Share', color: Colors.purple, onTap: () {}),
-                    ],
+                  const SizedBox(width: 12),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.asset(category.image, width: 100, height: 100, fit: BoxFit.cover),
                   ),
-                  const SizedBox(height: 32),
-
-                  // Description
-                  Text('Service Description', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface)),
-                  const SizedBox(height: 12),
-                  Text(
-                    category.description,
-                    style: TextStyle(fontSize: 16, color: theme.textTheme.bodyMedium?.color, height: 1.6),
-                  ),
-                  const SizedBox(height: 32),
-
-                  // Location
-                  Text('Location', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface)),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      const Icon(Icons.location_on_outlined, color: Colors.grey, size: 20),
-                      const SizedBox(width: 8),
-                      Text(category.location, style: TextStyle(fontSize: 16, color: theme.textTheme.bodyMedium?.color)),
-                    ],
-                  ),
-                  const SizedBox(height: 32),
-
-                  // Reviews
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text('Recent Reviews', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface)),
-                      TextButton(onPressed: () {}, child: const Text('View All')),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  _ReviewTile(name: 'Aman K.', rating: 5, comment: 'Highly recommended! They fixed the issue in no time and were very polite.', date: '2 days ago'),
-                  _ReviewTile(name: 'Selam W.', rating: 4, comment: 'Very professional service. Arrived exactly on time.', date: '1 week ago'),
-                  
-                  const SizedBox(height: 100), // Space for bottom bar
                 ],
               ),
             ),
-          ),
-        ],
-      ),
-      bottomNavigationBar: _buildBottomBar(context),
-    );
-  }
-
-  Widget _buildSliverAppBar(BuildContext context) {
-    return SliverAppBar(
-      expandedHeight: 300,
-      pinned: true,
-      elevation: 0,
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      leading: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: CircleAvatar(
-          backgroundColor: Theme.of(context).scaffoldBackgroundColor.withOpacity(0.9),
-          child: IconButton(
-            icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onSurface),
-            onPressed: () => Navigator.pop(context),
-          ),
-        ),
-      ),
-      flexibleSpace: FlexibleSpaceBar(
-        background: Stack(
-          fit: StackFit.expand,
-          children: [
-            Image.asset(category.image, fit: BoxFit.cover),
-            DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [Colors.black.withOpacity(0.4), Colors.transparent, Colors.transparent],
-                ),
+            
+            const Divider(thickness: 1, height: 1),
+            
+            // Primary Action Row
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _buildPrimaryAction(Icons.phone, 'Call Now', primaryBlue),
+                  _buildPrimaryAction(Icons.chat_bubble, 'WhatsApp', Colors.green),
+                  _buildPrimaryAction(Icons.directions, 'Directions', Colors.blueGrey),
+                ],
               ),
             ),
+            
+            const Divider(thickness: 8, color: Color(0xFFF1F3F4)),
+            
+            // Details Section
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('About this Business', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 12),
+                  Text(
+                    category.description,
+                    style: TextStyle(fontSize: 15, color: Colors.grey[800], height: 1.5),
+                  ),
+                  const SizedBox(height: 24),
+                  _buildInfoRow(Icons.access_time, 'Hours', 'Mon - Sat: 9:00 AM - 8:00 PM'),
+                  _buildInfoRow(Icons.payments_outlined, 'Price Range', category.price),
+                  _buildInfoRow(Icons.language, 'Website', 'www.${category.provider.toLowerCase().replaceAll(' ', '')}.com'),
+                ],
+              ),
+            ),
+            
+            const Divider(thickness: 8, color: Color(0xFFF1F3F4)),
+            
+            // Reviews Section
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('User Reviews', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      TextButton(onPressed: () {}, child: const Text('View All')),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  _ReviewTile(name: 'Aman K.', rating: 5, comment: 'Highly recommended! They fixed the issue in no time and were very polite.', date: '2 days ago'),
+                  _ReviewTile(name: 'Selam W.', rating: 4, comment: 'Very professional service. Arrived exactly on time.', date: '1 week ago'),
+                ],
+              ),
+            ),
+            const SizedBox(height: 80),
           ],
         ),
       ),
+      bottomNavigationBar: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, -2))],
+        ),
+        child: ElevatedButton(
+          onPressed: () {},
+          style: ElevatedButton.styleFrom(
+            backgroundColor: accentOrange,
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          ),
+          child: const Text('ENQUIRE NOW', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        ),
+      ),
     );
   }
 
-  Widget _buildBottomBar(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
-      decoration: BoxDecoration(
-        color: theme.cardTheme.color,
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 20, offset: const Offset(0, -5))],
-      ),
+  Widget _buildPrimaryAction(IconData icon, String label, Color color) {
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, color: color, size: 28),
+        ),
+        const SizedBox(height: 8),
+        Text(label, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 13)),
+      ],
+    );
+  }
+
+  Widget _buildInfoRow(IconData icon, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
       child: Row(
         children: [
+          Icon(icon, size: 20, color: Colors.grey[600]),
+          const SizedBox(width: 12),
           Column(
-            mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Estimated Price', style: TextStyle(color: Colors.grey, fontSize: 12)),
-              Text(category.price, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF6C63FF))),
+              Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+              Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
             ],
-          ),
-          const SizedBox(width: 24),
-          Expanded(
-            child: ElevatedButton(
-              onPressed: () {},
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 20),
-              ),
-              child: const Text('BOOK NOW'),
-            ),
           ),
         ],
       ),

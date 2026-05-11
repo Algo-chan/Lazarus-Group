@@ -66,11 +66,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 children: [
                   CircleAvatar(
                     radius: 50,
-                    backgroundColor: const Color(0xFFFF6B35).withOpacity(0.1),
+                    backgroundColor: const Color(0xFF007BFF).withOpacity(0.1),
                     child: Icon(
                       _isGuest ? Icons.person_outline : Icons.person,
                       size: 50,
-                      color: const Color(0xFFFF6B35),
+                      color: const Color(0xFF007BFF),
                     ),
                   ),
                   const SizedBox(height: 16),

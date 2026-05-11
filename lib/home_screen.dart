@@ -129,6 +129,25 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() => _categories = cats);
   }
 
+  void _navigateToDetail(ServiceCategory service) async {
+    final isGuest = await ApiService.isGuest();
+    if (isGuest) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please login to view details and contact providers'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        Navigator.push(context, MaterialPageRoute(builder: (context) => const LoginScreen()));
+      }
+    } else {
+      if (mounted) {
+        Navigator.push(context, MaterialPageRoute(builder: (context) => ServiceDetailScreen(category: service)));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     debugPrint('HomeScreen: Building build()');
@@ -216,137 +235,56 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildAppBar() {
     return SliverAppBar(
-      expandedHeight: 160,
       floating: true,
       pinned: true,
-      elevation: _isScrolled ? 2 : 0,
-      backgroundColor: _isScrolled 
-          ? Theme.of(context).scaffoldBackgroundColor 
-          : Colors.transparent,
-      leading: Builder(
-        builder: (context) => IconButton(
-          icon: const Icon(Icons.menu_rounded),
-          onPressed: () => Scaffold.of(context).openDrawer(),
-        ),
+      elevation: 0.5,
+      backgroundColor: Colors.white,
+      centerTitle: false,
+      title: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.location_on_rounded, color: Color(0xFF007BFF), size: 20),
+          const SizedBox(width: 4),
+          Text(
+            'Addis Ababa',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
+          ),
+          const Icon(Icons.arrow_drop_down, color: Colors.grey),
+        ],
       ),
       actions: [
-        ValueListenableBuilder<ThemeMode>(
-          valueListenable: themeNotifier,
-          builder: (context, mode, _) {
-            return IconButton(
-              onPressed: () => ThemeManager.toggleTheme(),
-              icon: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 300),
-                child: Icon(
-                  mode == ThemeMode.light ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
-                  key: ValueKey(mode),
-                ),
-              ),
-            );
-          },
+        IconButton(
+          onPressed: () => ThemeManager.toggleTheme(),
+          icon: const Icon(Icons.notifications_none_rounded, color: Colors.black87),
         ),
         IconButton(
           onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ProfileScreen())),
-          icon: const Icon(Icons.notifications_none_rounded),
+          icon: const Icon(Icons.account_circle_outlined, color: Colors.black87),
         ),
         const SizedBox(width: 8),
       ],
-      flexibleSpace: FlexibleSpaceBar(
-        stretchModes: const [StretchMode.blurBackground, StretchMode.zoomBackground],
-        centerTitle: false,
-        titlePadding: EdgeInsets.lerp(
-          const EdgeInsets.only(left: 56, bottom: 16),
-          const EdgeInsets.only(left: 56, bottom: 14),
-          _isScrolled ? 1 : 0,
-        ),
-        title: AnimatedOpacity(
-          duration: const Duration(milliseconds: 200),
-          opacity: 1.0,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (!_isScrolled)
-                Text(
-                  'Welcome, $_userName',
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              Text(
-                _isScrolled ? 'LocalConnect' : 'Discover Services',
-                style: TextStyle(
-                  fontSize: _isScrolled ? 18 : 20,
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.onSurface,
-                ),
-              ),
-            ],
-          ),
-        ),
-        background: Stack(
-          fit: StackFit.expand,
-          children: [
-            Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Theme.of(context).primaryColor.withOpacity(0.1),
-                    Theme.of(context).scaffoldBackgroundColor,
-                  ],
-                ),
-              ),
-            ),
-            Positioned(
-              right: -50,
-              top: -20,
-              child: Container(
-                width: 150,
-                height: 150,
-                decoration: BoxDecoration(
-                  color: Theme.of(context).primaryColor.withOpacity(0.05),
-                  shape: BoxShape.circle,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 
   Widget _buildBottomNavigationBar() {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-      height: 70,
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface.withOpacity(0.9),
-        borderRadius: BorderRadius.circular(30),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
-        border: Border.all(color: Colors.white.withOpacity(0.2)),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(30),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            _buildNavItem(0, Icons.explore_rounded, 'Explore'),
-            _buildNavItem(1, Icons.search_rounded, 'Search'),
-            _buildNavItem(2, Icons.calendar_today_rounded, 'Bookings'),
-            _buildNavItem(3, Icons.person_rounded, 'Profile'),
-          ],
-        ),
-      ),
+    return BottomNavigationBar(
+      currentIndex: _currentIndex,
+      onTap: (index) => setState(() => _currentIndex = index),
+      type: BottomNavigationBarType.fixed,
+      selectedItemColor: const Color(0xFF007BFF),
+      unselectedItemColor: Colors.grey,
+      selectedFontSize: 12,
+      unselectedFontSize: 12,
+      items: const [
+        BottomNavigationBarItem(icon: Icon(Icons.home_filled), label: 'Home'),
+        BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Search'),
+        BottomNavigationBarItem(icon: Icon(Icons.business_center), label: 'B2B'),
+        BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
+      ],
     );
   }
 
@@ -425,11 +363,17 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildCategories() {
-    return SizedBox(
-      height: 100,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 4,
+          mainAxisSpacing: 16,
+          crossAxisSpacing: 16,
+          childAspectRatio: 0.8,
+        ),
         itemCount: _categories.length,
         itemBuilder: (context, index) {
           final cat = _categories[index];
@@ -439,35 +383,42 @@ class _HomeScreenState extends State<HomeScreen> {
 
           return GestureDetector(
             onTap: () => setState(() => _selectedCategory = cat),
-            child: Container(
-              width: 80,
-              margin: const EdgeInsets.symmetric(horizontal: 8),
-              child: Column(
-                children: [
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                Expanded(
+                  child: Container(
+                    width: double.infinity,
                     decoration: BoxDecoration(
-                      color: isSelected ? color : color.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: isSelected ? [BoxShadow(color: color.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 4))] : [],
+                      color: isSelected ? color.withOpacity(0.2) : Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                      border: Border.all(
+                        color: isSelected ? color : Colors.transparent,
+                        width: 2,
+                      ),
                     ),
-                    child: Icon(icon, color: isSelected ? Colors.white : color, size: 28),
+                    child: Icon(icon, color: color, size: 32),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    cat,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                      color: isSelected ? color : Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                    ),
-                    textAlign: TextAlign.center,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  cat,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
-                ],
-              ),
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
             ),
           );
         },
@@ -489,7 +440,7 @@ class _HomeScreenState extends State<HomeScreen> {
             itemCount: services.length > 3 ? 3 : services.length,
             itemBuilder: (context, index) {
               final service = ServiceCategory.fromJson(services[index]);
-              return _FeaturedServiceCard(service: service);
+              return _FeaturedServiceCard(service: service, onTap: _navigateToDetail);
             },
           );
         },
@@ -518,7 +469,7 @@ class _HomeScreenState extends State<HomeScreen> {
             delegate: SliverChildBuilderDelegate(
               (context, index) {
                 final service = ServiceCategory.fromJson(services[index]);
-                return _ProfessionalServiceCard(service: service);
+                return _ProfessionalServiceCard(service: service, onTap: _navigateToDetail);
               },
               childCount: services.length,
             ),
@@ -531,50 +482,54 @@ class _HomeScreenState extends State<HomeScreen> {
 
 class _FeaturedServiceCard extends StatelessWidget {
   final ServiceCategory service;
-  const _FeaturedServiceCard({required this.service});
+  final Function(ServiceCategory) onTap;
+  const _FeaturedServiceCard({required this.service, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 280,
-      margin: const EdgeInsets.only(right: 16),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        image: DecorationImage(
-          image: AssetImage(service.image),
-          fit: BoxFit.cover,
-        ),
-      ),
+    return GestureDetector(
+      onTap: () => onTap(service),
       child: Container(
+        width: 280,
+        margin: const EdgeInsets.only(right: 16),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(24),
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Colors.transparent, Colors.black.withOpacity(0.8)],
+          image: DecorationImage(
+            image: AssetImage(service.image),
+            fit: BoxFit.cover,
           ),
         ),
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.end,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(10)),
-              child: Text(service.price, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(24),
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Colors.transparent, Colors.black.withOpacity(0.8)],
             ),
-            const SizedBox(height: 8),
-            Text(service.name, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                const Icon(Icons.star, color: Colors.amber, size: 16),
-                const SizedBox(width: 4),
-                Text('${service.rating} (${service.reviewsCount} reviews)', style: const TextStyle(color: Colors.white70, fontSize: 12)),
-              ],
-            ),
-          ],
+          ),
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.end,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(10)),
+                child: Text(service.price, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+              ),
+              const SizedBox(height: 8),
+              Text(service.name, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  const Icon(Icons.star, color: Colors.amber, size: 16),
+                  const SizedBox(width: 4),
+                  Text('${service.rating} (${service.reviewsCount} reviews)', style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -583,70 +538,121 @@ class _FeaturedServiceCard extends StatelessWidget {
 
 class _ProfessionalServiceCard extends StatelessWidget {
   final ServiceCategory service;
-  const _ProfessionalServiceCard({required this.service});
+  final Function(ServiceCategory) onTap;
+  const _ProfessionalServiceCard({required this.service, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     return Card(
+      elevation: 1,
+      margin: const EdgeInsets.only(bottom: 16),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       child: InkWell(
-        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => ServiceDetailScreen(category: service))),
-        borderRadius: BorderRadius.circular(20),
+        onTap: () => onTap(service),
+        borderRadius: BorderRadius.circular(8),
         child: Padding(
           padding: const EdgeInsets.all(12),
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Stack(
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
-                    child: Image.asset(service.image, width: 100, height: 100, fit: BoxFit.cover),
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.asset(service.image, width: 90, height: 90, fit: BoxFit.cover),
                   ),
-                  if (service.verified)
-                    Positioned(
-                      top: 6,
-                      right: 6,
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-                        child: const Icon(Icons.verified, color: Colors.blue, size: 14),
-                      ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                service.name,
+                                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            if (service.verified)
+                              const Icon(Icons.verified, color: Colors.blue, size: 16),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.green,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Row(
+                                children: [
+                                  Text(
+                                    service.rating.toString(),
+                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+                                  ),
+                                  const Icon(Icons.star, color: Colors.white, size: 10),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              '${service.reviewsCount} Ratings',
+                              style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          service.location,
+                          style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Open until 8:00 PM',
+                          style: TextStyle(fontSize: 12, color: Colors.green[700], fontWeight: FontWeight.w500),
+                        ),
+                      ],
                     ),
+                  ),
                 ],
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(service.name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis),
-                    const SizedBox(height: 4),
-                    Text(service.provider, style: TextStyle(color: Colors.grey[600], fontSize: 13)),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        const Icon(Icons.star_rounded, color: Colors.amber, size: 18),
-                        const SizedBox(width: 4),
-                        Text(service.rating.toString(), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                        const SizedBox(width: 4),
-                        Text('(${service.reviewsCount})', style: TextStyle(color: Colors.grey[500], fontSize: 13)),
-                        const Spacer(),
-                        Text(service.price, style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF6C63FF), fontSize: 14)),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Icon(Icons.location_on_outlined, size: 14, color: Colors.grey[500]),
-                        const SizedBox(width: 4),
-                        Text(service.location, style: TextStyle(fontSize: 12, color: Colors.grey[500])),
-                      ],
-                    ),
-                  ],
-                ),
+              const Divider(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _buildActionButton(context, Icons.phone, 'Call Now', const Color(0xFF007BFF)),
+                  _buildActionButton(context, Icons.chat_bubble_outline, 'WhatsApp', Colors.green),
+                  _buildActionButton(context, Icons.email_outlined, 'Enquire', const Color(0xFFF47E20)),
+                ],
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildActionButton(BuildContext context, IconData icon, String label, Color color) {
+    return InkWell(
+      onTap: () => onTap(service),
+      child: Column(
+        children: [
+          Icon(icon, color: color, size: 22),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold),
+          ),
+        ],
       ),
     );
   }

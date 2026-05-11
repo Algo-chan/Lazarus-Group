@@ -125,13 +125,13 @@ class ApiService {
   static final List<Map<String, dynamic>> mockServices = [
     {
       'id': '1',
-      'title': 'Expert Plumbing & Repair',
+      'title': 'Quick Fix Plumbing & Sanitary',
       'category': 'Plumbing',
       'provider': 'Abebe Plumbing Solutions',
       'rating': 4.8,
       'reviewsCount': 156,
       'price': '\$45/hr',
-      'description': 'Emergency leak repair and installations.',
+      'description': 'Emergency leak repair, bathroom installations, and pipe maintenance. We provide 24/7 emergency services across Addis Ababa.',
       'image': 'assets/images/photo-1.jpg',
       'location': 'Bole, Addis Ababa',
       'verified': true,
@@ -139,17 +139,59 @@ class ApiService {
     },
     {
       'id': '2',
-      'title': 'Garden & Landscape Design',
+      'title': 'Green Earth Landscaping',
       'category': 'Gardening',
       'provider': 'Kebede Green Landscapes',
       'rating': 4.5,
       'reviewsCount': 89,
       'price': '\$35/hr',
-      'description': 'Expert landscaping and lawn maintenance.',
+      'description': 'Expert landscaping, lawn maintenance, and garden design. We specialize in indigenous plants and sustainable garden practices.',
       'image': 'assets/images/oto-2.jpg',
       'location': 'CMC, Addis Ababa',
       'verified': true,
       'contact': {'phone': '+251912345678', 'whatsapp': '+251912345678'}
+    },
+    {
+      'id': '3',
+      'title': 'Spark Electrical & Maintenance',
+      'category': 'Electrician',
+      'provider': 'Tadesse Electricals',
+      'rating': 4.9,
+      'reviewsCount': 210,
+      'price': '\$50/hr',
+      'description': 'Certified electrical repairs, wiring installations, and solar panel maintenance. Safety is our top priority.',
+      'image': 'assets/images/photo-3.jpg',
+      'location': 'Piassa, Addis Ababa',
+      'verified': true,
+      'contact': {'phone': '+251913456789', 'whatsapp': '+251913456789'}
+    },
+    {
+      'id': '4',
+      'title': 'Pure Clean Professional Services',
+      'category': 'Cleaning',
+      'provider': 'Mulu Cleaning Co.',
+      'rating': 4.7,
+      'reviewsCount': 120,
+      'price': '\$25/hr',
+      'description': 'Deep home cleaning, office sanitization, and carpet washing. Eco-friendly cleaning materials used.',
+      'image': 'assets/images/photo-4.jpg',
+      'location': 'Kazanchis, Addis Ababa',
+      'verified': true,
+      'contact': {'phone': '+251914567890', 'whatsapp': '+251914567890'}
+    },
+    {
+      'id': '5',
+      'title': 'Rainbow Professional Painters',
+      'category': 'Painting',
+      'provider': 'Alem Paints & Decor',
+      'rating': 4.6,
+      'reviewsCount': 75,
+      'price': '\$40/hr',
+      'description': 'Interior and exterior painting, wallpaper installation, and decorative wall finishes.',
+      'image': 'assets/images/photo-1.jpg',
+      'location': 'Sarbet, Addis Ababa',
+      'verified': false,
+      'contact': {'phone': '+251915678901', 'whatsapp': '+251915678901'}
     }
   ];
 }
