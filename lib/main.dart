@@ -53,16 +53,34 @@ class _LocalServiceAppState extends State<LocalServiceApp> {
           themeMode: mode,
           theme: ThemeData(
             useMaterial3: true,
+            brightness: Brightness.light,
             primaryColor: const Color(0xFF007BFF),
             scaffoldBackgroundColor: const Color(0xFFF5F7FA),
             colorScheme: ColorScheme.fromSeed(
               seedColor: const Color(0xFF007BFF),
               primary: const Color(0xFF007BFF),
               secondary: const Color(0xFFF47E20),
+              brightness: Brightness.light,
             ),
             textTheme: const TextTheme(
               displayLarge: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Color(0xFF2D3436)),
               bodyLarge: TextStyle(fontSize: 16, color: Color(0xFF2D3436)),
+            ),
+          ),
+          darkTheme: ThemeData(
+            useMaterial3: true,
+            brightness: Brightness.dark,
+            primaryColor: const Color(0xFF007BFF),
+            scaffoldBackgroundColor: const Color(0xFF121212),
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: const Color(0xFF007BFF),
+              primary: const Color(0xFF007BFF),
+              secondary: const Color(0xFFF47E20),
+              brightness: Brightness.dark,
+            ),
+            textTheme: const TextTheme(
+              displayLarge: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+              bodyLarge: TextStyle(fontSize: 16),
             ),
           ),
           home: _isLoggedIn == null 
