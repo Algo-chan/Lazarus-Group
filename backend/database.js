@@ -1,19 +1,23 @@
 const Datastore = require('nedb-promises');
 const path = require('path');
 
-const usersDB = Datastore.create(path.join(__dirname, 'users.db'));
-const servicesDB = Datastore.create(path.join(__dirname, 'services.db'));
+const usersDB = Datastore.create({ filename: path.join(__dirname, 'users.db'), autoload: true });
+const servicesDB = Datastore.create({ filename: path.join(__dirname, 'services.db'), autoload: true });
+const bookingsDB = Datastore.create({ filename: path.join(__dirname, 'bookings.db'), autoload: true });
+const reviewsDB = Datastore.create({ filename: path.join(__dirname, 'reviews.db'), autoload: true });
+const chatsDB = Datastore.create({ filename: path.join(__dirname, 'chats.db'), autoload: true });
+const messagesDB = Datastore.create({ filename: path.join(__dirname, 'messages.db'), autoload: true });
+const auditLogsDB = Datastore.create({ filename: path.join(__dirname, 'audit_logs.db'), autoload: true });
 
-// Seed professional services if empty
 const seedServices = async () => {
   const count = await servicesDB.count({});
   if (count === 0) {
     const professionalServices = [
       {
-        id: '1',
         title: "Expert Plumbing & Repair",
         category: "Plumbing",
         provider: "Abebe Plumbing Solutions",
+        provider_id: null,
         rating: 4.8,
         reviewsCount: 156,
         price: "Starts from $45/hr",
@@ -21,16 +25,16 @@ const seedServices = async () => {
         image: "assets/images/photo-1.jpg",
         location: "Bole, Addis Ababa",
         verified: true,
-        contact: {
-          phone: "+251 911 234 567",
-          whatsapp: "+251 911 234 567"
-        }
+        contact_phone: "+251 911 234 567",
+        contact_whatsapp: "+251 911 234 567",
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       },
       {
-        id: '2',
         title: "Garden & Landscape Design",
         category: "Gardening",
         provider: "Kebede Green Landscapes",
+        provider_id: null,
         rating: 4.5,
         reviewsCount: 89,
         price: "Starts from $35/hr",
@@ -38,66 +42,66 @@ const seedServices = async () => {
         image: "assets/images/oto-2.jpg",
         location: "CMC, Addis Ababa",
         verified: true,
-        contact: {
-          phone: "+251 912 345 678",
-          whatsapp: "+251 912 345 678"
-        }
+        contact_phone: "+251 912 345 678",
+        contact_whatsapp: "+251 912 345 678",
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       },
       {
-        id: '3',
         title: "Professional Electrician",
         category: "Electrician",
         provider: "Dawit Electrical Works",
+        provider_id: null,
         rating: 4.9,
         reviewsCount: 230,
         price: "Starts from $55/hr",
-        description: "Certified electricians providing safe and reliable electrical installations, wiring, and repairs for homes and offices.",
+        description: "Certified electricians providing safe and reliable electrical installations, wiring, and repairs.",
         image: "assets/images/photo-3.jpg",
         location: "Saris, Addis Ababa",
         verified: true,
-        contact: {
-          phone: "+251 913 456 789",
-          whatsapp: "+251 913 456 789"
-        }
+        contact_phone: "+251 913 456 789",
+        contact_whatsapp: "+251 913 456 789",
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       },
       {
-        id: '4',
         title: "Deep House Cleaning",
         category: "Cleaning",
         provider: "CleanPro Services",
+        provider_id: null,
         rating: 4.7,
         reviewsCount: 112,
         price: "Starts from $25/hr",
-        description: "Providing premium house and office cleaning services. We use eco-friendly products to ensure a healthy environment.",
+        description: "Premium house and office cleaning services using eco-friendly products.",
         image: "assets/images/photo-4.jpg",
         location: "Piyassa, Addis Ababa",
         verified: false,
-        contact: {
-          phone: "+251 914 567 890",
-          whatsapp: "+251 914 567 890"
-        }
+        contact_phone: "+251 914 567 890",
+        contact_whatsapp: "+251 914 567 890",
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       },
       {
-        id: '5',
         title: "Interior & Exterior Painting",
         category: "Painting",
         provider: "ColorMaster Designs",
+        provider_id: null,
         rating: 4.6,
         reviewsCount: 65,
         price: "Starts from $40/hr",
-        description: "Professional painting services for residential and commercial properties. We offer color consultation and premium finishes.",
+        description: "Professional painting services for residential and commercial properties.",
         image: "assets/images/photo-1.jpg",
         location: "Kality, Addis Ababa",
         verified: true,
-        contact: {
-          phone: "+251 915 678 901",
-          whatsapp: "+251 915 678 901"
-        }
-      }
+        contact_phone: "+251 915 678 901",
+        contact_whatsapp: "+251 915 678 901",
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
     ];
     await servicesDB.insert(professionalServices);
     console.log('Database seeded with professional services.');
   }
 };
 
-module.exports = { usersDB, servicesDB, seedServices };
+module.exports = { usersDB, servicesDB, bookingsDB, reviewsDB, chatsDB, messagesDB, auditLogsDB, seedServices };

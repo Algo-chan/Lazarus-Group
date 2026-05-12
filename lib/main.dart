@@ -1,56 +1,35 @@
 import 'package:flutter/material.dart';
-import 'login_screen.dart';
-import 'home_screen.dart';
-import 'api_service.dart';
+import 'package:provider/provider.dart';
+import 'features/auth/presentation/providers/auth_provider.dart';
+import 'shared/router/app_router.dart';
 import 'theme_provider.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const LocalServiceApp());
+  runApp(
+    ChangeNotifierProvider(
+      create: (_) => AuthProvider(),
+      child: const LocalServiceApp(),
+    ),
+  );
 }
 
-class LocalServiceApp extends StatefulWidget {
+class LocalServiceApp extends StatelessWidget {
   const LocalServiceApp({super.key});
 
   @override
-  State<LocalServiceApp> createState() => _LocalServiceAppState();
-}
-
-class _LocalServiceAppState extends State<LocalServiceApp> {
-  bool? _isLoggedIn;
-
-  @override
-  void initState() {
-    super.initState();
-    _init();
-  }
-
-  Future<void> _init() async {
-    try {
-      final loggedIn = await ApiService.isLoggedIn().timeout(const Duration(seconds: 5));
-      if (mounted) {
-        setState(() {
-          _isLoggedIn = loggedIn;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isLoggedIn = false;
-        });
-      }
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
+    final authProvider = context.watch<AuthProvider>();
+    final appRouter = AppRouter(authProvider);
+
     return ValueListenableBuilder<ThemeMode>(
       valueListenable: themeNotifier,
       builder: (context, mode, __) {
-        return MaterialApp(
+        return MaterialApp.router(
           title: 'LocalConnect',
           debugShowCheckedModeBanner: false,
           themeMode: mode,
+          routerConfig: appRouter.router,
           theme: ThemeData(
             useMaterial3: true,
             brightness: Brightness.light,
@@ -83,9 +62,6 @@ class _LocalServiceAppState extends State<LocalServiceApp> {
               bodyLarge: TextStyle(fontSize: 16),
             ),
           ),
-          home: _isLoggedIn == null 
-            ? const Scaffold(body: Center(child: CircularProgressIndicator())) 
-            : (_isLoggedIn! ? const HomeScreen() : const LoginScreen()),
         );
       },
     );
