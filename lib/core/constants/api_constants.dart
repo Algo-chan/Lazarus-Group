@@ -9,6 +9,9 @@ class ApiConstants {
   static const String adminUsers = '$baseUrl/admin/users';
   static const String adminAnalytics = '$baseUrl/admin/analytics';
   static const String adminPendingProviders = '$baseUrl/admin/providers/pending';
+  static const String adminLogs = '$baseUrl/admin/logs';
+  static const String adminServices = '$baseUrl/admin/services';
+  static const String adminBookings = '$baseUrl/admin/bookings';
 
   static const String services = '$baseUrl/services';
   static const String categories = '$baseUrl/services/categories/list';

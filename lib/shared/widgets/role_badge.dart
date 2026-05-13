@@ -4,20 +4,32 @@ import '../../core/enums/user_role.dart';
 class RoleBadge extends StatelessWidget {
   final UserRole role;
   final double size;
+  final bool isActive;
 
   const RoleBadge({
     super.key,
     required this.role,
     this.size = 12,
+    this.isActive = true,
   });
 
   @override
   Widget build(BuildContext context) {
-    final (Color color, IconData icon, String label) = switch (role) {
-      UserRole.admin => (Colors.red, Icons.shield, 'Admin'),
-      UserRole.provider => (Colors.blue, Icons.verified, 'Provider'),
-      UserRole.customer => (Colors.green, Icons.person, 'Customer'),
-    };
+    Color color;
+    IconData icon;
+    String label;
+
+    if (!isActive) {
+      color = Colors.grey;
+      icon = Icons.block;
+      label = 'Banned';
+    } else {
+      (color, icon, label) = switch (role) {
+        UserRole.admin => (Colors.red, Icons.shield, 'Admin'),
+        UserRole.provider => (Colors.blue, Icons.verified, 'Provider'),
+        UserRole.customer => (Colors.green, Icons.person, 'Customer'),
+      };
+    }
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),

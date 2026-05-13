@@ -33,6 +33,10 @@ app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'OK', version: '2.0.0' });
 });
 
+app.use('/api', (req, res) => {
+  res.status(404).json({ message: `Route not found: ${req.method} ${req.originalUrl}` });
+});
+
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);
   res.status(500).json({ message: 'Internal server error' });
