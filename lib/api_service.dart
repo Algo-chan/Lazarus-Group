@@ -149,8 +149,11 @@ class ApiService {
   }
 
   static Future<List<dynamic>> getProviderBookings() async {
-    // API Constant points to /bookings/my, but check if there is a separate one
-    return await _client.get(ApiConstants.bookings); // Backend uses role-based query in /my or /provider
+    return await _client.get(ApiConstants.providerBookings);
+  }
+
+  static Future<List<dynamic>> getAdminBookings() async {
+    return await _client.get(ApiConstants.adminBookings);
   }
 
   static Future<Map<String, dynamic>> updateBookingStatus(String bookingId, String action) async {

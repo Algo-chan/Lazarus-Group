@@ -21,7 +21,7 @@ class ApiConstants {
 
   static const String bookings = '$baseUrl/bookings';
   static const String myBookings = '$baseUrl/bookings/my';
-  static const String providerBookings = '$baseUrl/bookings/my';
+  static const String providerBookings = '$baseUrl/bookings/provider';
 
   static const String reviews = '$baseUrl/reviews';
   static const String chats = '$baseUrl/chats';

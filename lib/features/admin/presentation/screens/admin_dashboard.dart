@@ -40,7 +40,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
         ApiService.getPendingProviders(),
         ApiService.getAuditLogs(),
         ApiService.getServices(),
-        ApiService.getProviderBookings(),
+        ApiService.getAdminBookings(),
       ];
       final results = await Future.wait(futures);
 

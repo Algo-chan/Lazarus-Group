@@ -41,6 +41,16 @@ const resolveStatus = (body) => {
 
 router.use(authenticate);
 
+router.get('/', allowRoles(ROLES.ADMIN), async (req, res) => {
+  try {
+    const bookings = await bookingsDB.find({}).sort({ created_at: -1 });
+    const sanitized = await Promise.all(bookings.map((booking) => sanitizeBooking(booking)));
+    res.status(200).json(sanitized);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 router.post('/', allowRoles(ROLES.CUSTOMER), async (req, res) => {
   try {
     const { error, value } = bookingSchema.validate(req.body);
