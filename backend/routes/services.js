@@ -19,10 +19,11 @@ const serviceSchema = Joi.object({
 
 router.get('/', optionalAuth, async (req, res) => {
   try {
-    const { query, category, provider_id, page = 1, limit = 20 } = req.query;
+    const { query, category, provider_id, location, page = 1, limit = 20 } = req.query;
     let filter = {};
     if (category && category !== 'All') filter.category = category;
     if (provider_id) filter.provider_id = provider_id;
+    if (location) filter.location = new RegExp(location, 'i');
     if (query) {
       const searchRegex = new RegExp(query, 'i');
       filter.$or = [

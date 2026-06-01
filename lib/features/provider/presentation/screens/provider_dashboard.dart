@@ -1,12 +1,8 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:http/http.dart' as http;
-import 'package:local_service_app/core/constants/api_constants.dart';
-import 'package:local_service_app/core/services/secure_storage_service.dart';
-import 'package:local_service_app/shared/widgets/loading_widget.dart';
-import 'package:local_service_app/shared/widgets/error_display.dart';
-import 'package:local_service_app/features/auth/presentation/providers/auth_provider.dart';
+import 'package:go_router/go_router.dart';
+import 'package:local_service_app/api_service.dart';
+import 'package:local_service_app/providers/auth_provider.dart';
 
 class ProviderDashboard extends StatefulWidget {
   const ProviderDashboard({super.key});
@@ -17,244 +13,200 @@ class ProviderDashboard extends StatefulWidget {
 
 class _ProviderDashboardState extends State<ProviderDashboard> {
   int _currentTab = 0;
-  List<dynamic> _myServices = [];
-  List<dynamic> _myBookings = [];
   bool _isLoading = true;
-  String? _error;
-
-  final _storage = SecureStorageService();
+  List<dynamic> _services = [];
+  List<dynamic> _bookings = [];
+  List<dynamic> _reviews = [];
+  Map<String, dynamic>? _stats;
 
   @override
   void initState() {
     super.initState();
-    _loadData();
+    _loadAll();
   }
 
-  Future<void> _loadData() async {
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
-
+  Future<void> _loadAll() async {
+    setState(() => _isLoading = true);
     try {
-      final token = await _storage.getToken();
-      final headers = {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'};
+      final auth = context.read<AuthProvider>();
+      final providerId = auth.currentUser?['id'] ?? auth.currentUser?['_id'];
+      
+      final List<Future<dynamic>> futures = [
+        ApiService.getProfile(), // for stats
+        ApiService.getServices(provider_id: providerId),
+        ApiService.getProviderBookings(),
+        if (providerId != null) ApiService.getProviderProfile(providerId) else Future.value({}),
+      ];
+      final results = await Future.wait(futures);
 
-      final results = await Future.wait([
-        http.get(Uri.parse(ApiConstants.myBookings), headers: headers),
-      ]);
-
-      _myBookings = jsonDecode(results[0].body);
-      _myServices = [];
+      if (mounted) {
+        setState(() {
+          _stats = results[0]['stats'];
+          _services = results[1] as List<dynamic>? ?? [];
+          _bookings = results[2] as List<dynamic>? ?? [];
+          if (results.length > 3) {
+            _reviews = results[3]['reviews'] ?? [];
+          }
+          _isLoading = false;
+        });
+      }
     } catch (e) {
-      _error = e.toString();
+      if (mounted) setState(() => _isLoading = false);
     }
-
-    if (mounted) setState(() => _isLoading = false);
   }
 
   @override
   Widget build(BuildContext context) {
-    final auth = context.watch<AuthProvider>();
+    final colors = Theme.of(context).colorScheme;
+    final auth = context.read<AuthProvider>();
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Provider Panel'),
+        title: const Text('Service Provider Console'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadData,
-          ),
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () => auth.logout(),
-          ),
+          IconButton(icon: const Icon(Icons.refresh), onPressed: _loadAll),
+          IconButton(icon: const Icon(Icons.logout), onPressed: () => auth.logout()),
         ],
       ),
-      drawer: _buildDrawer(context, auth),
+      drawer: _buildDrawer(colors, auth),
       body: _isLoading
-          ? const LoadingWidget(message: 'Loading your dashboard...')
-          : _error != null
-              ? ErrorDisplay(message: _error!, onRetry: _loadData)
-              : _buildBody(),
+          ? const Center(child: CircularProgressIndicator())
+          : _buildBody(colors),
+      floatingActionButton: _currentTab == 1
+          ? FloatingActionButton(
+              onPressed: () => context.push('/provider/services/create'),
+              child: const Icon(Icons.add),
+            )
+          : null,
     );
   }
 
-  Widget _buildDrawer(BuildContext context, AuthProvider auth) {
+  Widget _buildDrawer(ColorScheme colors, AuthProvider auth) {
     return Drawer(
-      child: ListView(
+      child: Column(
         children: [
           UserAccountsDrawerHeader(
+            accountName: Text(auth.currentUser?['name'] ?? 'Provider'),
+            accountEmail: Text(auth.currentUser?['email'] ?? ''),
             currentAccountPicture: CircleAvatar(
               backgroundColor: Colors.white,
-              child: Text(
-                (auth.user?.name ?? 'P')[0].toUpperCase(),
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Theme.of(context).primaryColor),
-              ),
+              child: Text(auth.currentUser?['name']?[0] ?? 'P', style: TextStyle(color: colors.primary, fontSize: 24, fontWeight: FontWeight.bold)),
             ),
-            accountName: Text(auth.user?.name ?? 'Provider'),
-            accountEmail: Text(auth.user?.email ?? ''),
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(colors: [Colors.blue, Colors.blueAccent]),
-            ),
+            decoration: BoxDecoration(color: colors.primary),
           ),
-          ListTile(
-            leading: const Icon(Icons.dashboard),
-            title: const Text('Overview'),
-            selected: _currentTab == 0,
-            onTap: () => setState(() => _currentTab = 0),
-          ),
-          ListTile(
-            leading: const Icon(Icons.miscellaneous_services),
-            title: const Text('My Services'),
-            selected: _currentTab == 1,
-            onTap: () => setState(() => _currentTab = 1),
-          ),
-          ListTile(
-            leading: const Icon(Icons.calendar_today),
-            title: Text('Bookings (${_myBookings.length})'),
-            selected: _currentTab == 2,
-            onTap: () => setState(() => _currentTab = 2),
-          ),
-          ListTile(
-            leading: const Icon(Icons.access_time),
-            title: const Text('Availability'),
-            selected: _currentTab == 3,
-            onTap: () => setState(() => _currentTab = 3),
-          ),
-          const Divider(),
-          ListTile(
-            leading: const Icon(Icons.logout, color: Colors.red),
-            title: const Text('Logout', style: TextStyle(color: Colors.red)),
-            onTap: () => auth.logout(),
-          ),
+          _drawerItem(0, 'Overview', Icons.dashboard),
+          _drawerItem(1, 'My Services', Icons.build, badge: _services.length),
+          _drawerItem(2, 'Bookings', Icons.calendar_today, badge: _bookings.where((b) => b['status'] == 'pending').length),
+          _drawerItem(3, 'Reviews', Icons.star, badge: _reviews.length),
+          _drawerItem(4, 'Chats', Icons.chat),
         ],
       ),
     );
   }
 
-  Widget _buildBody() {
+  Widget _drawerItem(int index, String title, IconData icon, {int? badge}) {
+    final selected = _currentTab == index;
+    return ListTile(
+      leading: Icon(icon, color: selected ? null : Colors.grey),
+      title: Text(title, style: TextStyle(fontWeight: selected ? FontWeight.bold : FontWeight.normal)),
+      selected: selected,
+      trailing: (badge != null && badge > 0)
+          ? Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(10)),
+              child: Text('$badge', style: const TextStyle(color: Colors.white, fontSize: 10)),
+            )
+          : null,
+      onTap: () {
+        if (index == 4) {
+          context.push('/provider/chats');
+          Navigator.pop(context);
+        } else {
+          setState(() => _currentTab = index);
+          Navigator.pop(context);
+        }
+      },
+    );
+  }
+
+  Widget _buildBody(ColorScheme colors) {
     switch (_currentTab) {
-      case 0:
-        return _buildOverview();
-      case 1:
-        return _buildMyServices();
-      case 2:
-        return _buildBookings();
-      case 3:
-        return _buildAvailability();
-      default:
-        return _buildOverview();
+      case 0: return _buildOverview(colors);
+      case 1: return _buildServices(colors);
+      case 2: return _buildBookings(colors);
+      case 3: return _buildReviews(colors);
+      default: return _buildOverview(colors);
     }
   }
 
-  Widget _buildOverview() {
-    final pendingBookings = _myBookings.where((b) => b['status'] == 'pending').length;
-
+  Widget _buildOverview(ColorScheme colors) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Welcome Back!', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
-          const SizedBox(height: 24),
+          Text('Good Day, Partner!', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 20),
           Row(
             children: [
-              Expanded(child: _StatCard('My Services', '${_myServices.length}', Icons.miscellaneous_services, Colors.blue)),
-              const SizedBox(width: 12),
-              Expanded(child: _StatCard('Total Bookings', '${_myBookings.length}', Icons.calendar_today, Colors.orange)),
+              _statCard('Total Bookings', '${_stats?['total_bookings'] ?? 0}', colors.primary),
+              const SizedBox(width: 16),
+              _statCard('Avg Rating', '${_stats?['avg_rating'] ?? 0.0}', colors.secondary),
             ],
           ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(child: _StatCard('Pending', '$pendingBookings', Icons.pending, Colors.red)),
-              const SizedBox(width: 12),
-              Expanded(child: _StatCard('Completed', '${_myBookings.where((b) => b['status'] == 'completed').length}', Icons.check_circle, Colors.green)),
-            ],
-          ),
-          if (pendingBookings > 0) ...[
-            const SizedBox(height: 24),
-            Card(
-              color: Colors.orange.shade50,
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    const Icon(Icons.notifications_active, color: Colors.orange),
-                    const SizedBox(width: 12),
-                    Expanded(child: Text('$pendingBookings pending booking(s) require your attention!', style: const TextStyle(fontWeight: FontWeight.w500))),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMyServices() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.miscellaneous_services, size: 64, color: Colors.grey),
           const SizedBox(height: 16),
-          const Text('Service Management', style: TextStyle(fontSize: 18)),
-          const SizedBox(height: 8),
-          ElevatedButton.icon(
-            onPressed: () => _showAddServiceDialog(),
-            icon: const Icon(Icons.add),
-            label: const Text('Add New Service'),
-          ),
+          _statCard('Active Services', '${_services.length}', Colors.green, fullWidth: true),
+          const SizedBox(height: 32),
+          Text('Recent Activity', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 12),
+          if (_bookings.isEmpty)
+            const Text('No recent bookings')
+          else
+            ..._bookings.take(3).map((b) => ListTile(
+              title: Text(b['serviceName'] ?? ''),
+              subtitle: Text(b['customerName'] ?? ''),
+              trailing: Text(b['status'] ?? ''),
+            )),
         ],
       ),
     );
   }
 
-  Widget _buildBookings() {
-    if (_myBookings.isEmpty) {
-      return const Center(
+  Widget _statCard(String label, String value, Color color, {bool fullWidth = false}) {
+    final card = Card(
+      elevation: 0,
+      color: color.withOpacity(0.1),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: color.withOpacity(0.2))),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.event_busy, size: 64, color: Colors.grey),
-            SizedBox(height: 16),
-            Text('No bookings yet', style: TextStyle(fontSize: 16)),
+            Text(value, style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: color)),
+            const SizedBox(height: 4),
+            Text(label, style: TextStyle(fontSize: 12, color: color.withOpacity(0.8))),
           ],
         ),
-      );
-    }
+      ),
+    );
+    return fullWidth ? SizedBox(width: double.infinity, child: card) : Expanded(child: card);
+  }
 
+  Widget _buildServices(ColorScheme colors) {
     return ListView.builder(
-      itemCount: _myBookings.length,
+      padding: const EdgeInsets.all(16),
+      itemCount: _services.length,
       itemBuilder: (context, index) {
-        final booking = _myBookings[index];
-        final status = booking['status'] ?? 'pending';
-        final statusColor = switch (status) {
-          'pending' => Colors.orange,
-          'confirmed' => Colors.blue,
-          'completed' => Colors.green,
-          'cancelled' => Colors.red,
-          _ => Colors.grey,
-        };
-
+        final s = _services[index];
         return Card(
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           child: ListTile(
-            leading: CircleAvatar(
-              backgroundColor: statusColor.withValues(alpha: 0.2),
-              child: Icon(Icons.calendar_today, color: statusColor),
-            ),
-            title: Text(booking['customer_name'] ?? 'Customer'),
-            subtitle: Text('Status: $status'),
-            trailing: PopupMenuButton<String>(
-              onSelected: (value) => _updateBookingStatus(booking['_id'], value),
-              itemBuilder: (context) => [
-                const PopupMenuItem(value: 'confirmed', child: Text('Confirm')),
-                const PopupMenuItem(value: 'completed', child: Text('Mark Complete')),
-                const PopupMenuItem(value: 'cancelled', child: Text('Cancel')),
+            title: Text(s['title'] ?? ''),
+            subtitle: Text(s['category'] ?? ''),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(icon: const Icon(Icons.edit, size: 20), onPressed: () => context.push('/provider/services/${s['id']}/edit')),
+                IconButton(icon: const Icon(Icons.delete, size: 20, color: Colors.red), onPressed: () => _confirmDelete(s['id'])),
               ],
             ),
           ),
@@ -263,66 +215,83 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
     );
   }
 
-  Widget _buildAvailability() {
-    return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.access_time, size: 64, color: Colors.grey),
-          SizedBox(height: 16),
-          Text('Availability settings coming soon', style: TextStyle(fontSize: 16)),
+  void _confirmDelete(String id) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Service?'),
+        content: const Text('This will permanently remove the service listing.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          TextButton(onPressed: () {
+            ApiService.deleteService(id).then((_) => _loadAll());
+            Navigator.pop(context);
+          }, child: const Text('Delete', style: TextStyle(color: Colors.red))),
         ],
       ),
     );
   }
 
-  void _showAddServiceDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => const AlertDialog(
-        title: Text('Add Service'),
-        content: Text('Service creation form will be implemented here.'),
-      ),
+  Widget _buildBookings(ColorScheme colors) {
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: _bookings.length,
+      itemBuilder: (context, index) {
+        final b = _bookings[index];
+        return Card(
+          child: ListTile(
+            title: Text(b['customerName'] ?? 'Customer'),
+            subtitle: Text('${b['serviceName']} • ${b['date']}'),
+            trailing: _buildBookingActions(b, colors),
+          ),
+        );
+      },
     );
   }
 
-  Future<void> _updateBookingStatus(String bookingId, String status) async {
-    try {
-      final token = await _storage.getToken();
-      await http.put(
-        Uri.parse('${ApiConstants.bookings}/$bookingId/status'),
-        headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
-        body: jsonEncode({'status': status}),
+  Widget _buildBookingActions(dynamic b, ColorScheme colors) {
+    final status = b['status'];
+    if (status == 'pending') {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(icon: const Icon(Icons.check, color: Colors.green), onPressed: () => _updateBooking(b['id'], 'confirm')),
+          IconButton(icon: const Icon(Icons.close, color: Colors.red), onPressed: () => _updateBooking(b['id'], 'cancel')),
+        ],
       );
-      _loadData();
-    } catch (_) {}
+    }
+    if (status == 'confirmed') {
+      return TextButton(onPressed: () => _updateBooking(b['id'], 'start'), child: const Text('Start'));
+    }
+    if (status == 'in_progress') {
+      return TextButton(onPressed: () => _updateBooking(b['id'], 'complete'), child: const Text('Complete'));
+    }
+    return Text(status?.toUpperCase() ?? '', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold));
   }
-}
 
-class _StatCard extends StatelessWidget {
-  final String title;
-  final String value;
-  final IconData icon;
-  final Color color;
+  void _updateBooking(String id, String action) {
+    ApiService.updateBookingStatus(id, action).then((_) => _loadAll());
+  }
 
-  const _StatCard(this.title, this.value, this.icon, this.color);
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, color: color, size: 28),
-            const SizedBox(height: 12),
-            Text(value, style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: color)),
-            const SizedBox(height: 4),
-            Text(title, style: const TextStyle(fontSize: 13, color: Colors.grey)),
-          ],
-        ),
-      ),
+  Widget _buildReviews(ColorScheme colors) {
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: _reviews.length,
+      itemBuilder: (context, index) {
+        final r = _reviews[index];
+        return Card(
+          child: ListTile(
+            title: Row(
+              children: [
+                Text(r['reviewerName'] ?? 'Anonymous', style: const TextStyle(fontWeight: FontWeight.bold)),
+                const Spacer(),
+                Text('${r['rating']} ★', style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.bold)),
+              ],
+            ),
+            subtitle: Text(r['comment'] ?? ''),
+          ),
+        );
+      },
     );
   }
 }

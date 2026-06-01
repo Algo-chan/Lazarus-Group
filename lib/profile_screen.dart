@@ -1,8 +1,9 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'login_screen.dart';
+import 'package:go_router/go_router.dart';
 import 'api_service.dart';
+import 'package:local_service_app/core/services/secure_storage_service.dart';
+import 'package:local_service_app/features/bookings/presentation/screens/my_bookings_screen.dart';
+import 'package:local_service_app/features/notifications/presentation/screens/notifications_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -15,6 +16,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _isGuest = false;
   String _userName = 'Guest User';
   String _userEmail = 'Not logged in';
+  final _storage = SecureStorageService();
 
   @override
   void initState() {
@@ -23,13 +25,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _loadUserData() async {
-    final prefs = await SharedPreferences.getInstance();
-    final isGuest = prefs.getBool('isGuest') ?? false;
+    final isGuest = await _storage.isGuestMode();
     
     if (!isGuest) {
-      final userStr = prefs.getString('user');
-      if (userStr != null) {
-        final userData = jsonDecode(userStr);
+      final userData = await _storage.getUserData();
+      if (userData != null) {
         setState(() {
           _userName = userData['name'] ?? 'User';
           _userEmail = userData['email'] ?? '';
@@ -93,6 +93,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
               color: theme.cardTheme.color,
               child: Column(
                 children: [
+                  _MenuTile(icon: Icons.calendar_today, label: 'My Bookings', onTap: () {
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const MyBookingsScreen()));
+                  }),
+                  Divider(indent: 56, height: 1, color: theme.dividerColor.withOpacity(0.1)),
+                  _MenuTile(icon: Icons.notifications_none, label: 'Notifications', onTap: () {
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationsScreen()));
+                  }),
+                  Divider(indent: 56, height: 1, color: theme.dividerColor.withOpacity(0.1)),
                   _MenuTile(icon: Icons.history, label: 'My Enquiries', onTap: () {}),
                   Divider(indent: 56, height: 1, color: theme.dividerColor.withOpacity(0.1)),
                   _MenuTile(icon: Icons.favorite_border, label: 'Shortlisted Services', onTap: () {}),
@@ -114,11 +122,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   onPressed: () async {
                     await ApiService.logout();
                     if (mounted) {
-                      Navigator.pushAndRemoveUntil(
-                        context,
-                        MaterialPageRoute(builder: (context) => const LoginScreen()),
-                        (route) => false,
-                      );
+                      context.go('/login');
                     }
                   },
                   icon: Icon(_isGuest ? Icons.login : Icons.logout, color: _isGuest ? Colors.green : Colors.red),

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:local_service_app/features/auth/presentation/providers/auth_provider.dart';
+import 'package:local_service_app/providers/auth_provider.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -52,19 +52,21 @@ class _LoginScreenState extends State<LoginScreen>
     if (!_formKey.currentState!.validate()) return;
 
     final auth = context.read<AuthProvider>();
-    final success = await auth.login(
-      _emailController.text.trim(),
-      _passwordController.text,
-    );
-
-    if (!success && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(auth.error ?? 'Login failed'),
-          backgroundColor: Theme.of(context).colorScheme.error,
-          behavior: SnackBarBehavior.floating,
-        ),
+    try {
+      await auth.login(
+        _emailController.text.trim(),
+        _passwordController.text,
       );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString()),
+            backgroundColor: Theme.of(context).colorScheme.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     }
   }
 
@@ -72,7 +74,7 @@ class _LoginScreenState extends State<LoginScreen>
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final auth = context.watch<AuthProvider>();
-    final isLoading = auth.status == AuthStatus.loading;
+    final isLoading = auth.isLoading;
 
     return Scaffold(
       body: Container(
@@ -206,6 +208,14 @@ class _LoginScreenState extends State<LoginScreen>
               ),
             ),
             const SizedBox(height: 20),
+            TextButton(
+              onPressed: () => context.go('/home'),
+              child: Text(
+                'Continue as Guest',
+                style: TextStyle(color: colors.onSurface.withValues(alpha: 0.6), fontWeight: FontWeight.w500),
+              ),
+            ),
+            const SizedBox(height: 8),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [

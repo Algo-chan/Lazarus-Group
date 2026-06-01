@@ -1,5 +1,8 @@
 class ApiConstants {
-  static const String baseUrl = 'http://127.0.0.1:3000/api';
+  static const String baseUrl = String.fromEnvironment(
+    'API_URL',
+    defaultValue: 'http://127.0.0.1:3000/api',
+  );
 
   static const String login = '$baseUrl/auth/login';
   static const String signup = '$baseUrl/auth/signup';
@@ -18,6 +21,10 @@ class ApiConstants {
 
   static const String bookings = '$baseUrl/bookings';
   static const String myBookings = '$baseUrl/bookings/my';
+  static const String providerBookings = '$baseUrl/bookings/my';
 
   static const String reviews = '$baseUrl/reviews';
+  static const String chats = '$baseUrl/chats';
+  static const String notifications = '$baseUrl/notifications';
+  static const String providers = '$baseUrl/providers';
 }

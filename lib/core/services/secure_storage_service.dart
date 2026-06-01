@@ -6,6 +6,8 @@ class SecureStorageService {
   static const _refreshTokenKey = 'refresh_token';
   static const _userKey = 'user_data';
   static const _roleKey = 'user_role';
+  static const _guestKey = 'guest_mode';
+  static const _rememberedEmailKey = 'remembered_email';
 
   final FlutterSecureStorage _storage;
 
@@ -54,5 +56,22 @@ class SecureStorageService {
 
   Future<void> clearAll() async {
     await _storage.deleteAll();
+  }
+
+  Future<void> saveGuestMode(bool isGuest) async {
+    await _storage.write(key: _guestKey, value: isGuest.toString());
+  }
+
+  Future<bool> isGuestMode() async {
+    final value = await _storage.read(key: _guestKey);
+    return value == 'true';
+  }
+
+  Future<void> saveRememberedEmail(String email) async {
+    await _storage.write(key: _rememberedEmailKey, value: email);
+  }
+
+  Future<String?> getRememberedEmail() async {
+    return await _storage.read(key: _rememberedEmailKey);
   }
 }

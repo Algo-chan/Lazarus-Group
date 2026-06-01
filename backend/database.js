@@ -1,23 +1,33 @@
 const Datastore = require('nedb-promises');
 const path = require('path');
+const fs = require('fs');
+const bcrypt = require('bcryptjs');
 
-const usersDB = Datastore.create({ filename: path.join(__dirname, 'users.db'), autoload: true });
-const servicesDB = Datastore.create({ filename: path.join(__dirname, 'services.db'), autoload: true });
-const bookingsDB = Datastore.create({ filename: path.join(__dirname, 'bookings.db'), autoload: true });
-const reviewsDB = Datastore.create({ filename: path.join(__dirname, 'reviews.db'), autoload: true });
-const chatsDB = Datastore.create({ filename: path.join(__dirname, 'chats.db'), autoload: true });
-const messagesDB = Datastore.create({ filename: path.join(__dirname, 'messages.db'), autoload: true });
-const auditLogsDB = Datastore.create({ filename: path.join(__dirname, 'audit_logs.db'), autoload: true });
+const DB_PATH = process.env.DB_PATH || __dirname;
+fs.mkdirSync(DB_PATH, { recursive: true });
+
+const usersDB = Datastore.create({ filename: path.join(DB_PATH, 'users.db'), autoload: true });
+const servicesDB = Datastore.create({ filename: path.join(DB_PATH, 'services.db'), autoload: true });
+const bookingsDB = Datastore.create({ filename: path.join(DB_PATH, 'bookings.db'), autoload: true });
+const reviewsDB = Datastore.create({ filename: path.join(DB_PATH, 'reviews.db'), autoload: true });
+const chatsDB = Datastore.create({ filename: path.join(DB_PATH, 'chats.db'), autoload: true });
+const messagesDB = Datastore.create({ filename: path.join(DB_PATH, 'messages.db'), autoload: true });
+const auditLogsDB = Datastore.create({ filename: path.join(DB_PATH, 'audit_logs.db'), autoload: true });
+const notificationsDB = Datastore.create({ filename: path.join(DB_PATH, 'notifications.db'), autoload: true });
 
 const seedServices = async () => {
   const count = await servicesDB.count({});
   if (count === 0) {
+    const providers = await usersDB.find({ role: 'provider' });
+    const providerMap = new Map(providers.map((provider) => [provider.name, provider._id]));
+    const resolveProvider = (name) => providerMap.get(name) ?? null;
+
     const professionalServices = [
       {
         title: "Expert Plumbing & Repair",
         category: "Plumbing",
         provider: "Abebe Plumbing Solutions",
-        provider_id: null,
+        provider_id: resolveProvider("Abebe Plumbing Solutions"),
         rating: 4.8,
         reviewsCount: 156,
         price: "Starts from $45/hr",
@@ -34,7 +44,7 @@ const seedServices = async () => {
         title: "Garden & Landscape Design",
         category: "Gardening",
         provider: "Kebede Green Landscapes",
-        provider_id: null,
+        provider_id: resolveProvider("Kebede Green Landscapes"),
         rating: 4.5,
         reviewsCount: 89,
         price: "Starts from $35/hr",
@@ -51,7 +61,7 @@ const seedServices = async () => {
         title: "Professional Electrician",
         category: "Electrician",
         provider: "Dawit Electrical Works",
-        provider_id: null,
+        provider_id: resolveProvider("Dawit Electrical Works"),
         rating: 4.9,
         reviewsCount: 230,
         price: "Starts from $55/hr",
@@ -68,7 +78,7 @@ const seedServices = async () => {
         title: "Deep House Cleaning",
         category: "Cleaning",
         provider: "CleanPro Services",
-        provider_id: null,
+        provider_id: resolveProvider("CleanPro Services"),
         rating: 4.7,
         reviewsCount: 112,
         price: "Starts from $25/hr",
@@ -85,7 +95,7 @@ const seedServices = async () => {
         title: "Interior & Exterior Painting",
         category: "Painting",
         provider: "ColorMaster Designs",
-        provider_id: null,
+        provider_id: resolveProvider("ColorMaster Designs"),
         rating: 4.6,
         reviewsCount: 65,
         price: "Starts from $40/hr",
@@ -104,4 +114,77 @@ const seedServices = async () => {
   }
 };
 
-module.exports = { usersDB, servicesDB, bookingsDB, reviewsDB, chatsDB, messagesDB, auditLogsDB, seedServices };
+const seedDemoUsers = async () => {
+  const passwordHash = await bcrypt.hash('password123', 12);
+  const demoUsers = [
+    {
+      name: 'Abebe Plumbing Solutions',
+      email: 'abebe@localconnect.et',
+      phone: '+251911234567',
+      role: 'provider',
+      is_verified: true,
+    },
+    {
+      name: 'Kebede Green Landscapes',
+      email: 'kebede@localconnect.et',
+      phone: '+251912345678',
+      role: 'provider',
+      is_verified: true,
+    },
+    {
+      name: 'Dawit Electrical Works',
+      email: 'dawit@localconnect.et',
+      phone: '+251913456789',
+      role: 'provider',
+      is_verified: true,
+    },
+    {
+      name: 'CleanPro Services',
+      email: 'cleanpro@localconnect.et',
+      phone: '+251914567890',
+      role: 'provider',
+      is_verified: false,
+    },
+    {
+      name: 'ColorMaster Designs',
+      email: 'colormaster@localconnect.et',
+      phone: '+251915678901',
+      role: 'provider',
+      is_verified: true,
+    },
+    {
+      name: 'LocalConnect Admin',
+      email: 'admin@localconnect.et',
+      phone: '+251900000001',
+      role: 'admin',
+      is_verified: true,
+    },
+    {
+      name: 'Mulu Customer',
+      email: 'customer@localconnect.et',
+      phone: '+251900000002',
+      role: 'customer',
+      is_verified: false,
+    },
+  ];
+
+  for (const demoUser of demoUsers) {
+    const existing = await usersDB.findOne({ email: demoUser.email });
+    if (!existing) {
+      await usersDB.insert({
+        name: demoUser.name,
+        email: demoUser.email,
+        phone: demoUser.phone,
+        password_hash: passwordHash,
+        role: demoUser.role,
+        profile_image: null,
+        is_verified: demoUser.is_verified,
+        is_active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      });
+    }
+  }
+};
+
+module.exports = { usersDB, servicesDB, bookingsDB, reviewsDB, chatsDB, messagesDB, auditLogsDB, notificationsDB, seedServices, seedDemoUsers };

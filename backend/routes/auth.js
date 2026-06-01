@@ -9,7 +9,7 @@ const router = express.Router();
 const signupSchema = Joi.object({
   name: Joi.string().min(2).max(100).required(),
   email: Joi.string().email().required(),
-  phone: Joi.string().pattern(/^\+?[\d\s-]{7,15}$/).optional(),
+  phone: Joi.string().pattern(/^\+2519\d{8}$/).optional(),
   password: Joi.string().min(6).max(128).required(),
   role: Joi.string().valid('customer', 'provider').default('customer'),
 });
@@ -124,11 +124,14 @@ router.get('/me', authenticate, async (req, res) => {
     if (user.role === 'provider') {
       const services = await (require('../database').servicesDB).find({ provider_id: user._id });
       const totalBookings = await bookingsDB.count({ provider_id: user._id });
-      const avgRating = await reviewsDB.findOne({ provider_id: user._id });
+      const providerReviews = await reviewsDB.find({ provider_id: user._id });
+      const avgRating = providerReviews.length
+        ? providerReviews.reduce((sum, review) => sum + Number(review.rating || 0), 0) / providerReviews.length
+        : 0;
       stats = {
         total_services: services.length,
         total_bookings: totalBookings,
-        avg_rating: avgRating ? avgRating.rating : 0,
+        avg_rating: Number(avgRating.toFixed(2)),
       };
     } else if (user.role === 'customer') {
       const totalBookings = await bookingsDB.count({ customer_id: user._id });

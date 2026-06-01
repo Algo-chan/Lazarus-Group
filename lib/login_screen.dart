@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'signup_screen.dart';
 import 'home_screen.dart';
 import 'api_service.dart';
+import 'package:local_service_app/core/services/secure_storage_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -23,6 +23,7 @@ class _LoginScreenState extends State<LoginScreen>
   bool _isLoading = false;
   bool _obscurePassword = true;
   bool _rememberMe = false;
+  final _storage = SecureStorageService();
 
   @override
   void initState() {
@@ -50,8 +51,7 @@ class _LoginScreenState extends State<LoginScreen>
 
   Future<void> _loadRememberedEmail() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final email = prefs.getString('remembered_email');
+      final email = await _storage.getRememberedEmail();
       if (email != null && email.isNotEmpty) {
         _emailController.text = email;
         _rememberMe = true;
@@ -78,6 +78,8 @@ class _LoginScreenState extends State<LoginScreen>
 
         if (_rememberMe) {
           await ApiService.saveUserSession(_emailController.text.trim());
+        } else {
+          await _storage.saveRememberedEmail('');
         }
 
         if (mounted) {

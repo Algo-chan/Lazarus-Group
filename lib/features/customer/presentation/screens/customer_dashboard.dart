@@ -6,7 +6,7 @@ import 'package:local_service_app/core/constants/api_constants.dart';
 import 'package:local_service_app/core/services/secure_storage_service.dart';
 import 'package:local_service_app/shared/widgets/loading_widget.dart';
 import 'package:local_service_app/shared/widgets/error_display.dart';
-import 'package:local_service_app/features/auth/presentation/providers/auth_provider.dart';
+import 'package:local_service_app/providers/auth_provider.dart';
 
 class CustomerDashboard extends StatefulWidget {
   const CustomerDashboard({super.key});
@@ -92,12 +92,12 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
             currentAccountPicture: CircleAvatar(
               backgroundColor: Colors.white,
               child: Text(
-                (auth.user?.name ?? 'C')[0].toUpperCase(),
+                (auth.currentUser?['name'] ?? 'C')[0].toUpperCase(),
                 style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Theme.of(context).primaryColor),
               ),
             ),
-            accountName: Text(auth.user?.name ?? 'Customer'),
-            accountEmail: Text(auth.user?.email ?? ''),
+            accountName: Text(auth.currentUser?['name'] ?? 'Customer'),
+            accountEmail: Text(auth.currentUser?['email'] ?? ''),
             decoration: const BoxDecoration(
               gradient: LinearGradient(colors: [Color(0xFF007BFF), Color(0xFF00C6FB)]),
             ),
@@ -314,7 +314,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
 
   Widget _buildProfile() {
     final auth = context.watch<AuthProvider>();
-    final user = auth.user;
+    final user = auth.currentUser;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -325,14 +325,14 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
             radius: 50,
             backgroundColor: Theme.of(context).primaryColor.withValues(alpha: 0.1),
             child: Text(
-              (user?.name ?? 'U')[0].toUpperCase(),
+              (user?['name'] ?? 'U')[0].toUpperCase(),
               style: TextStyle(fontSize: 40, color: Theme.of(context).primaryColor),
             ),
           ),
           const SizedBox(height: 16),
-          Text(user?.name ?? 'Customer', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+          Text(user?['name'] ?? 'Customer', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
           const SizedBox(height: 4),
-          Text(user?.email ?? '', style: const TextStyle(fontSize: 16, color: Colors.grey)),
+          Text(user?['email'] ?? '', style: const TextStyle(fontSize: 16, color: Colors.grey)),
           const SizedBox(height: 8),
           Text('Role: Customer', style: TextStyle(fontSize: 14, color: Colors.grey[600])),
           const SizedBox(height: 32),

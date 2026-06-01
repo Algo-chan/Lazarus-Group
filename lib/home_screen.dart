@@ -1,82 +1,16 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
-import 'service_detail_screen.dart';
-import 'profile_screen.dart';
-import 'api_service.dart';
-import 'login_screen.dart';
-import 'theme_provider.dart';
-import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
-class ServiceCategory {
-  final String id;
-  final String name;
-  final String description;
-  final IconData icon;
-  final String provider;
-  final String contactPhone;
-  final double rating;
-  final int reviewsCount;
-  final String price;
-  final String location;
-  final bool verified;
-  final String image;
-  final Color themeColor;
-
-  ServiceCategory({
-    required this.id,
-    required this.name,
-    required this.description,
-    required this.icon,
-    required this.provider,
-    required this.contactPhone,
-    required this.rating,
-    required this.reviewsCount,
-    required this.price,
-    required this.location,
-    required this.verified,
-    required this.image,
-    required this.themeColor,
-  });
-
-  factory ServiceCategory.fromJson(Map<String, dynamic> json) {
-    final cat = json['category'] ?? '';
-    return ServiceCategory(
-      id: json['id'] ?? json['_id'] ?? '',
-      name: json['title'] ?? '',
-      description: json['description'] ?? '',
-      icon: _getIcon(cat),
-      provider: json['provider'] ?? '',
-      contactPhone: json['contact']?['phone'] ?? '+251 000 000 000',
-      rating: (json['rating'] ?? 0.0).toDouble(),
-      reviewsCount: json['reviewsCount'] ?? 0,
-      price: json['price'] ?? '',
-      location: json['location'] ?? '',
-      verified: json['verified'] ?? false,
-      image: json['image'] ?? 'assets/images/photo-1.jpg',
-      themeColor: _getColor(cat),
-    );
-  }
-
-  static IconData _getIcon(String category) {
-    category = category.toLowerCase();
-    if (category.contains('plumbing')) return Icons.plumbing_rounded;
-    if (category.contains('electric')) return Icons.electrical_services_rounded;
-    if (category.contains('clean')) return Icons.cleaning_services_rounded;
-    if (category.contains('garden')) return Icons.yard_rounded;
-    if (category.contains('paint')) return Icons.format_paint_rounded;
-    return Icons.miscellaneous_services_rounded;
-  }
-
-  static Color _getColor(String category) {
-    category = category.toLowerCase();
-    if (category.contains('plumbing')) return Colors.blue;
-    if (category.contains('electric')) return Colors.orange;
-    if (category.contains('clean')) return Colors.teal;
-    if (category.contains('garden')) return Colors.green;
-    if (category.contains('paint')) return Colors.purple;
-    return Colors.indigo;
-  }
-}
+import 'providers/auth_provider.dart';
+import 'providers/service_provider.dart';
+import 'providers/other_providers.dart';
+import 'shared/widgets/app_logo.dart';
+import 'shared/widgets/service_card.dart';
+import 'shared/widgets/loading_widget.dart';
+import 'core/enums/user_role.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -86,573 +20,583 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final ScrollController _scrollController = ScrollController();
-  bool _isScrolled = false;
-  int _currentIndex = 0;
-  String _searchQuery = '';
-  String _selectedCategory = 'All';
-  List<String> _categories = ['All'];
-  String _userName = 'Guest';
-  
+  final PageController _featuredController = PageController();
+  Timer? _featuredTimer;
+  int _currentFeaturedPage = 0;
+
   @override
   void initState() {
     super.initState();
-    _loadData();
-    _scrollController.addListener(_onScroll);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final auth = context.read<AuthProvider>();
+      context.read<ServiceProvider>().fetchServices();
+      context.read<ServiceProvider>().fetchCategories();
+      
+      if (auth.isAuthenticated && auth.token != null) {
+        context.read<ChatProvider>().initSocket(auth.token!);
+        context.read<NotificationProvider>().fetchNotifications();
+      }
+    });
+    _startFeaturedTimer();
+  }
+
+  void _startFeaturedTimer() {
+    _featuredTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+      if (_featuredController.hasClients) {
+        final serviceProvider = context.read<ServiceProvider>();
+        final featuredCount = serviceProvider.services.length > 5 ? 5 : serviceProvider.services.length;
+        if (featuredCount > 0) {
+          _currentFeaturedPage = (_currentFeaturedPage + 1) % featuredCount;
+          _featuredController.animateToPage(
+            _currentFeaturedPage,
+            duration: const Duration(milliseconds: 800),
+            curve: Curves.easeInOut,
+          );
+        }
+      }
+    });
   }
 
   @override
   void dispose() {
-    _scrollController.removeListener(_onScroll);
-    _scrollController.dispose();
+    _featuredTimer?.cancel();
+    _featuredController.dispose();
     super.dispose();
-  }
-
-  void _onScroll() {
-    if (_scrollController.offset > 50 && !_isScrolled) {
-      setState(() => _isScrolled = true);
-    } else if (_scrollController.offset <= 50 && _isScrolled) {
-      setState(() => _isScrolled = false);
-    }
-  }
-
-  void _loadData() async {
-    final cats = await ApiService.getCategories();
-    final prefs = await SharedPreferences.getInstance();
-    final userStr = prefs.getString('user');
-    if (userStr != null) {
-      final user = jsonDecode(userStr);
-      setState(() {
-        _userName = user['name'] ?? 'User';
-      });
-    }
-    setState(() => _categories = cats);
-  }
-
-  void _navigateToDetail(ServiceCategory service) async {
-    final isGuest = await ApiService.isGuest();
-    if (isGuest) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Please login to view details and contact providers'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-        Navigator.push(context, MaterialPageRoute(builder: (context) => const LoginScreen()));
-      }
-    } else {
-      if (mounted) {
-        Navigator.push(context, MaterialPageRoute(builder: (context) => ServiceDetailScreen(category: service)));
-      }
-    }
   }
 
   @override
   Widget build(BuildContext context) {
-    debugPrint('HomeScreen: Building build()');
+    final authProvider = context.watch<AuthProvider>();
+    final serviceProvider = context.watch<ServiceProvider>();
+    final notificationProvider = context.watch<NotificationProvider>();
+    final theme = Theme.of(context);
+
     return Scaffold(
-      extendBody: true,
-      drawer: Drawer(
-        child: Column(
-          children: [
-            UserAccountsDrawerHeader(
-              currentAccountPicture: CircleAvatar(
-                backgroundColor: Colors.white,
+      appBar: AppBar(
+        leading: Builder(
+          builder: (context) => IconButton(
+            icon: const Icon(Icons.menu_rounded),
+            onPressed: () => Scaffold.of(context).openDrawer(),
+          ),
+        ),
+        title: const AppLogo(size: 28, showText: true).animate().fade().slideX(begin: -0.2),
+        actions: [
+          Stack(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.notifications_none_rounded),
+                onPressed: () => context.push('/notifications'),
+              ),
+              if (notificationProvider.unreadCount > 0)
+                Positioned(
+                  right: 8,
+                  top: 8,
+                  child: Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.error,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    constraints: const BoxConstraints(
+                      minWidth: 16,
+                      minHeight: 16,
+                    ),
+                    child: Text(
+                      '${notificationProvider.unreadCount}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+            ],
+          ).animate().fade().slideX(begin: 0.2),
+          Padding(
+            padding: const EdgeInsets.only(right: 8.0),
+            child: authProvider.isAuthenticated
+                ? InkWell(
+                    onTap: () => context.push('/profile'),
+                    child: CircleAvatar(
+                      radius: 18,
+                      backgroundColor: theme.colorScheme.primaryContainer,
+                      child: Text(
+                        authProvider.currentUser?['name']?[0].toUpperCase() ?? 'U',
+                        style: TextStyle(
+                          color: theme.colorScheme.onPrimaryContainer,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  )
+                : TextButton(
+                    onPressed: () => context.push('/login'),
+                    child: const Text('Login'),
+                  ),
+          ).animate().fade().slideX(begin: 0.2),
+        ],
+      ),
+      drawer: _buildDrawer(context, authProvider, theme),
+      body: RefreshIndicator(
+        onRefresh: () async {
+          await serviceProvider.fetchServices();
+          await serviceProvider.fetchCategories();
+        },
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (authProvider.isAuthenticated && (authProvider.role == UserRole.provider || authProvider.role == UserRole.admin))
+                _buildQuickRoleInfo(context, authProvider, theme),
+
+              // Search Bar
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: GestureDetector(
+                  onTap: () => context.push('/search'),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surfaceVariant.withOpacity(0.5),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: theme.colorScheme.outlineVariant),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.search_rounded, color: theme.colorScheme.onSurfaceVariant),
+                        const SizedBox(width: 12),
+                        Text(
+                          'Search for services...',
+                          style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
+                        ),
+                        const Spacer(),
+                        Icon(Icons.tune_rounded, color: theme.colorScheme.primary),
+                      ],
+                    ),
+                  ),
+                ),
+              ).animate().fade().slideY(begin: 0.1),
+
+              // Categories
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
                 child: Text(
-                  _userName.isNotEmpty ? _userName[0].toUpperCase() : 'G',
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Theme.of(context).primaryColor),
+                  'Categories',
+                  style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+                ),
+              ).animate().fade().slideY(begin: 0.1, delay: 100.ms),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 100,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  itemCount: serviceProvider.categories.length,
+                  itemBuilder: (context, index) {
+                    final category = serviceProvider.categories[index];
+                    return _CategoryCard(category: category)
+                        .animate()
+                        .fade()
+                        .slideX(begin: 0.2, delay: (150 + index * 50).ms);
+                  },
                 ),
               ),
-              accountName: Text(_userName, style: const TextStyle(fontWeight: FontWeight.bold)),
-              accountEmail: const Text('user@example.com'),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Theme.of(context).primaryColor, Theme.of(context).primaryColor.withOpacity(0.8)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+
+              const SizedBox(height: 24),
+
+              // Featured Carousel
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Text(
+                  'Featured Services',
+                  style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
                 ),
-              ),
-            ),
-            _buildDrawerItem(Icons.home_rounded, 'Home', () => Navigator.pop(context), true),
-            _buildDrawerItem(Icons.person_rounded, 'Profile', () {
-              Navigator.pop(context);
-              Navigator.push(context, MaterialPageRoute(builder: (context) => const ProfileScreen()));
-            }),
-            _buildDrawerItem(Icons.history_rounded, 'My Bookings', () => Navigator.pop(context)),
-            const Divider(indent: 20, endIndent: 20),
-            _buildDrawerItem(Icons.settings_rounded, 'Settings', () => Navigator.pop(context)),
-            const Spacer(),
-            _buildDrawerItem(Icons.logout_rounded, 'Logout', () async {
-              await ApiService.logout();
-              if (mounted) {
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (context) => const LoginScreen()),
-                  (route) => false,
-                );
-              }
-            }, false, Colors.red),
-            const SizedBox(height: 40),
-          ],
+              ).animate().fade().slideY(begin: 0.1, delay: 200.ms),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 200,
+                child: serviceProvider.isLoading
+                    ? const Center(child: LoadingWidget())
+                    : PageView.builder(
+                        controller: _featuredController,
+                        itemCount: serviceProvider.services.length > 5 ? 5 : serviceProvider.services.length,
+                        onPageChanged: (index) => setState(() => _currentFeaturedPage = index),
+                        itemBuilder: (context, index) {
+                          final service = serviceProvider.services[index];
+                          return _FeaturedCard(service: service);
+                        },
+                      ),
+              ).animate().fade().scale(begin: const Offset(0.95, 0.95), delay: 250.ms),
+
+              const SizedBox(height: 24),
+
+              // All Services
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'All Services',
+                      style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+                    ),
+                    TextButton(
+                      onPressed: () => context.push('/search'),
+                      child: const Text('View All'),
+                    ),
+                  ],
+                ),
+              ).animate().fade().slideY(begin: 0.1, delay: 300.ms),
+              
+              if (serviceProvider.isLoading && serviceProvider.services.isEmpty)
+                const Center(child: LoadingWidget(message: 'Loading services...'))
+              else
+                ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  itemCount: serviceProvider.services.length,
+                  itemBuilder: (context, index) {
+                    final service = serviceProvider.services[index];
+                    return ServiceCard(
+                      service: service,
+                      onTap: () => context.push('/service/${service['id'] ?? service['_id']}'),
+                    ).animate().fade().slideY(begin: 0.1, delay: (350 + index * 50).ms);
+                  },
+                ),
+              
+              const SizedBox(height: 100),
+            ],
+          ),
         ),
       ),
-      body: CustomScrollView(
-        controller: _scrollController,
-        slivers: [
-          _buildAppBar(),
-          SliverToBoxAdapter(
+      bottomSheet: authProvider.isGuest
+          ? Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primaryContainer,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 10,
+                    offset: const Offset(0, -2),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Log in to book services and message providers!',
+                      style: TextStyle(color: theme.colorScheme.onPrimaryContainer),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  ElevatedButton(
+                    onPressed: () => context.push('/login'),
+                    child: const Text('Login'),
+                  ),
+                ],
+              ),
+            ).animate().slideY(begin: 1.0, duration: 500.ms, curve: Curves.easeOut)
+          : null,
+    );
+  }
+
+  Widget _buildQuickRoleInfo(BuildContext context, AuthProvider auth, ThemeData theme) {
+    final isProvider = auth.role == UserRole.provider;
+    final title = isProvider ? 'Provider Overview' : 'Admin Overview';
+    final actionLabel = isProvider ? 'Dashboard' : 'Console';
+    final actionRoute = isProvider ? '/provider/dashboard' : '/admin/dashboard';
+
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.secondaryContainer.withOpacity(0.4),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: theme.colorScheme.secondary.withOpacity(0.2)),
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            backgroundColor: theme.colorScheme.secondary,
+            child: Icon(isProvider ? Icons.business_center_rounded : Icons.admin_panel_settings_rounded, color: Colors.white),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildSearchBar(),
-                _buildSectionHeader('Categories', () {}),
-                _buildCategories(),
-                _buildSectionHeader('Featured Services', () {}),
-                _buildFeaturedServices(),
-                _buildSectionHeader('Popular Near You', () {}),
+                Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                Text('Manage your ${isProvider ? 'services & bookings' : 'platform data'}', style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurfaceVariant)),
               ],
             ),
           ),
-          _buildServiceList(),
-          const SliverToBoxAdapter(child: SizedBox(height: 100)),
-        ],
-      ),
-      bottomNavigationBar: _buildBottomNavigationBar(),
-    );
-  }
-
-  Widget _buildDrawerItem(IconData icon, String title, VoidCallback onTap, [bool isSelected = false, Color? color]) {
-    return ListTile(
-      leading: Icon(icon, color: color ?? (isSelected ? Theme.of(context).primaryColor : null)),
-      title: Text(title, style: TextStyle(color: color, fontWeight: isSelected ? FontWeight.bold : null)),
-      onTap: onTap,
-      selected: isSelected,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 24),
-    );
-  }
-
-  Widget _buildAppBar() {
-    return SliverAppBar(
-      floating: true,
-      pinned: true,
-      elevation: 0.5,
-      backgroundColor: Colors.white,
-      centerTitle: false,
-      title: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.location_on_rounded, color: Color(0xFF007BFF), size: 20),
-          const SizedBox(width: 4),
-          Text(
-            'Addis Ababa',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Theme.of(context).colorScheme.onSurface,
-            ),
+          FilledButton.tonal(
+            onPressed: () => context.push(actionRoute),
+            child: Text(actionLabel),
           ),
-          const Icon(Icons.arrow_drop_down, color: Colors.grey),
         ],
       ),
-      actions: [
-        IconButton(
-          onPressed: () => ThemeManager.toggleTheme(),
-          icon: const Icon(Icons.notifications_none_rounded, color: Colors.black87),
-        ),
-        IconButton(
-          onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ProfileScreen())),
-          icon: const Icon(Icons.account_circle_outlined, color: Colors.black87),
-        ),
-        const SizedBox(width: 8),
-      ],
-    );
+    ).animate().fade().slideY(begin: -0.1);
   }
 
-  Widget _buildBottomNavigationBar() {
-    return BottomNavigationBar(
-      currentIndex: _currentIndex,
-      onTap: (index) => setState(() => _currentIndex = index),
-      type: BottomNavigationBarType.fixed,
-      selectedItemColor: const Color(0xFF007BFF),
-      unselectedItemColor: Colors.grey,
-      selectedFontSize: 12,
-      unselectedFontSize: 12,
-      items: const [
-        BottomNavigationBarItem(icon: Icon(Icons.home_filled), label: 'Home'),
-        BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Search'),
-        BottomNavigationBarItem(icon: Icon(Icons.business_center), label: 'B2B'),
-        BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
-      ],
-    );
-  }
-
-  Widget _buildNavItem(int index, IconData icon, String label) {
-    final isSelected = _currentIndex == index;
-    return GestureDetector(
-      onTap: () => setState(() => _currentIndex = index),
-      behavior: HitTestBehavior.opaque,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? Theme.of(context).primaryColor.withOpacity(0.1) : Colors.transparent,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              color: isSelected ? Theme.of(context).primaryColor : Colors.grey,
-              size: 26,
-            ),
-            if (isSelected)
-              Container(
-                margin: const EdgeInsets.only(top: 4),
-                width: 4,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Theme.of(context).primaryColor,
-                  shape: BoxShape.circle,
-                ),
+  Widget _buildDrawer(BuildContext context, AuthProvider auth, ThemeData theme) {
+    return Drawer(
+      child: Column(
+        children: [
+          UserAccountsDrawerHeader(
+            accountName: Text(auth.currentUser?['name'] ?? (auth.isGuest ? 'Guest User' : 'LocalConnect User')),
+            accountEmail: Text(auth.currentUser?['email'] ?? (auth.isGuest ? 'Browse Mode' : '')),
+            currentAccountPicture: CircleAvatar(
+              backgroundColor: Colors.white,
+              child: Text(
+                (auth.currentUser?['name']?[0] ?? 'L').toUpperCase(),
+                style: TextStyle(color: theme.colorScheme.primary, fontSize: 24, fontWeight: FontWeight.bold),
               ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSearchBar() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-      child: TextField(
-        onChanged: (val) => setState(() => _searchQuery = val),
-        decoration: InputDecoration(
-          hintText: 'Search for any service...',
-          prefixIcon: const Icon(Icons.search_rounded, color: Colors.grey),
-          suffixIcon: Container(
-            margin: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Theme.of(context).primaryColor,
-              borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(Icons.tune_rounded, color: Colors.white, size: 20),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [theme.colorScheme.primary, theme.colorScheme.secondary],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
           ),
-        ),
-      ),
-    );
-  }
+          Expanded(
+            child: ListView(
+              padding: EdgeInsets.zero,
+              children: [
+                _drawerTile(Icons.home_rounded, 'Home', () => Navigator.pop(context), selected: true),
+                
+                if (auth.isAuthenticated) ...[
+                  if (auth.role == UserRole.customer) ...[
+                    _drawerTile(Icons.dashboard_rounded, 'My Dashboard', () {
+                      Navigator.pop(context);
+                      context.push('/customer');
+                    }),
+                    _drawerTile(Icons.calendar_month_rounded, 'My Bookings', () {
+                      Navigator.pop(context);
+                      context.push('/customer/bookings');
+                    }),
+                    _drawerTile(Icons.favorite_rounded, 'Saved Services', () {
+                      Navigator.pop(context);
+                      context.push('/customer/saved');
+                    }),
+                  ],
+                  if (auth.role == UserRole.provider) ...[
+                    _drawerTile(Icons.analytics_rounded, 'Provider Dashboard', () {
+                      Navigator.pop(context);
+                      context.push('/provider/dashboard');
+                    }),
+                    _drawerTile(Icons.build_circle_rounded, 'My Services', () {
+                      Navigator.pop(context);
+                      context.push('/provider/services');
+                    }),
+                    _drawerTile(Icons.upcoming_rounded, 'Incoming Bookings', () {
+                      Navigator.pop(context);
+                      context.push('/provider/bookings');
+                    }),
+                  ],
+                  if (auth.role == UserRole.admin) ...[
+                    _drawerTile(Icons.admin_panel_settings_rounded, 'Admin Console', () {
+                      Navigator.pop(context);
+                      context.push('/admin/dashboard');
+                    }),
+                  ],
+                  _drawerTile(Icons.chat_rounded, 'Messages', () {
+                    Navigator.pop(context);
+                    context.push(auth.role == UserRole.provider ? '/provider/chats' : '/customer/chats');
+                  }),
+                ],
 
-  Widget _buildSectionHeader(String title, VoidCallback onSeeAll) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(title, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface)),
-          TextButton(
-            onPressed: onSeeAll,
-            child: const Text('See All', style: TextStyle(color: Color(0xFF6C63FF), fontWeight: FontWeight.bold)),
+                const Divider(),
+                _drawerTile(Icons.search_rounded, 'Find Services', () {
+                  Navigator.pop(context);
+                  context.push('/search');
+                }),
+                _drawerTile(Icons.settings_rounded, 'Settings', () {
+                  Navigator.pop(context);
+                  context.push('/settings');
+                }),
+              ],
+            ),
           ),
+          const Divider(),
+          if (auth.isAuthenticated)
+            _drawerTile(Icons.logout_rounded, 'Logout', () {
+              Navigator.pop(context);
+              auth.logout();
+            }, color: Colors.red)
+          else
+            _drawerTile(Icons.login_rounded, 'Login / Signup', () {
+              Navigator.pop(context);
+              context.push('/login');
+            }, color: theme.colorScheme.primary),
+          const SizedBox(height: 16),
         ],
       ),
     );
   }
 
-  Widget _buildCategories() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: GridView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 4,
-          mainAxisSpacing: 16,
-          crossAxisSpacing: 16,
-          childAspectRatio: 0.8,
-        ),
-        itemCount: _categories.length,
-        itemBuilder: (context, index) {
-          final cat = _categories[index];
-          final isSelected = _selectedCategory == cat;
-          final icon = ServiceCategory._getIcon(cat);
-          final color = ServiceCategory._getColor(cat);
-
-          return GestureDetector(
-            onTap: () => setState(() => _selectedCategory = cat),
-            child: Column(
-              children: [
-                Expanded(
-                  child: Container(
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: isSelected ? color.withOpacity(0.2) : Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                      border: Border.all(
-                        color: isSelected ? color : Colors.transparent,
-                        width: 2,
-                      ),
-                    ),
-                    child: Icon(icon, color: color, size: 32),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  cat,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                    color: Theme.of(context).colorScheme.onSurface,
-                  ),
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildFeaturedServices() {
-    return SizedBox(
-      height: 200,
-      child: FutureBuilder<List<dynamic>>(
-        future: ApiService.getServices(),
-        builder: (context, snapshot) {
-          if (!snapshot.hasData) return const SizedBox();
-          final services = snapshot.data!;
-          return ListView.builder(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: services.length > 3 ? 3 : services.length,
-            itemBuilder: (context, index) {
-              final service = ServiceCategory.fromJson(services[index]);
-              return _FeaturedServiceCard(service: service, onTap: _navigateToDetail);
-            },
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildServiceList() {
-    return FutureBuilder<List<dynamic>>(
-      future: ApiService.getServices(query: _searchQuery, category: _selectedCategory),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const SliverFillRemaining(child: Center(child: CircularProgressIndicator()));
-        }
-        if (snapshot.hasError) {
-          return SliverFillRemaining(child: Center(child: Text('Error: ${snapshot.error}')));
-        }
-        final services = snapshot.data ?? [];
-        if (services.isEmpty) {
-          return const SliverFillRemaining(child: Center(child: Text('No services found.')));
-        }
-
-        return SliverPadding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          sliver: SliverList(
-            delegate: SliverChildBuilderDelegate(
-              (context, index) {
-                final service = ServiceCategory.fromJson(services[index]);
-                return _ProfessionalServiceCard(service: service, onTap: _navigateToDetail);
-              },
-              childCount: services.length,
-            ),
-          ),
-        );
-      },
+  Widget _drawerTile(IconData icon, String title, VoidCallback onTap, {bool selected = false, Color? color}) {
+    return ListTile(
+      leading: Icon(icon, color: color),
+      title: Text(title, style: TextStyle(fontWeight: selected ? FontWeight.bold : FontWeight.normal, color: color)),
+      selected: selected,
+      onTap: onTap,
     );
   }
 }
 
-class _FeaturedServiceCard extends StatelessWidget {
-  final ServiceCategory service;
-  final Function(ServiceCategory) onTap;
-  const _FeaturedServiceCard({required this.service, required this.onTap});
+class _CategoryCard extends StatelessWidget {
+  final String category;
+
+  const _CategoryCard({required this.category});
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return GestureDetector(
-      onTap: () => onTap(service),
+      onTap: () => context.push('/search?category=$category'),
       child: Container(
-        width: 280,
-        margin: const EdgeInsets.only(right: 16),
+        width: 80,
+        margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(24),
+          color: theme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primaryContainer.withOpacity(0.3),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                _getCategoryIcon(category),
+                color: theme.colorScheme.primary,
+                size: 24,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              category,
+              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  IconData _getCategoryIcon(String category) {
+    switch (category.toLowerCase()) {
+      case 'all': return Icons.grid_view_rounded;
+      case 'plumbing': return Icons.plumbing_rounded;
+      case 'electrician': return Icons.electrical_services_rounded;
+      case 'cleaning': return Icons.cleaning_services_rounded;
+      case 'gardening': return Icons.yard_rounded;
+      case 'painting': return Icons.format_paint_rounded;
+      case 'carpentry': return Icons.handyman_rounded;
+      case 'ac repair': return Icons.ac_unit_rounded;
+      case 'car mechanic': return Icons.directions_car_rounded;
+      default: return Icons.miscellaneous_services_rounded;
+    }
+  }
+}
+
+class _FeaturedCard extends StatelessWidget {
+  final Map<String, dynamic> service;
+
+  const _FeaturedCard({required this.service});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return GestureDetector(
+      onTap: () => context.push('/service/${service['id'] ?? service['_id']}'),
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
           image: DecorationImage(
-            image: AssetImage(service.image),
+            image: service['image'] != null && service['image'].startsWith('assets')
+                ? AssetImage(service['image']) as ImageProvider
+                : NetworkImage(service['image'] ?? 'https://via.placeholder.com/400x200') as ImageProvider,
             fit: BoxFit.cover,
           ),
         ),
         child: Container(
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(20),
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [Colors.transparent, Colors.black.withOpacity(0.8)],
+              colors: [
+                Colors.transparent,
+                Colors.black.withOpacity(0.8),
+              ],
             ),
           ),
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(16),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.end,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(10)),
-                child: Text(service.price, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.secondary,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  service['category'] ?? 'Service',
+                  style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                ),
               ),
               const SizedBox(height: 8),
-              Text(service.name, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+              Text(
+                service['title'] ?? service['name'] ?? 'Premium Service',
+                style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 4),
               Row(
                 children: [
-                  const Icon(Icons.star, color: Colors.amber, size: 16),
+                  const Icon(Icons.star_rounded, color: Colors.amber, size: 16),
                   const SizedBox(width: 4),
-                  Text('${service.rating} (${service.reviewsCount} reviews)', style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                  Text(
+                    '${service['rating'] ?? 0.0} (${service['reviewsCount'] ?? 0} reviews)',
+                    style: const TextStyle(color: Colors.white70, fontSize: 12),
+                  ),
+                  const Spacer(),
+                  Text(
+                    service['price'] ?? 'Contact for price',
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                  ),
                 ],
               ),
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _ProfessionalServiceCard extends StatelessWidget {
-  final ServiceCategory service;
-  final Function(ServiceCategory) onTap;
-  const _ProfessionalServiceCard({required this.service, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      elevation: 1,
-      margin: const EdgeInsets.only(bottom: 16),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      child: InkWell(
-        onTap: () => onTap(service),
-        borderRadius: BorderRadius.circular(8),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.asset(service.image, width: 90, height: 90, fit: BoxFit.cover),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(
-                              child: Text(
-                                service.name,
-                                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            if (service.verified)
-                              const Icon(Icons.verified, color: Colors.blue, size: 16),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: Colors.green,
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Row(
-                                children: [
-                                  Text(
-                                    service.rating.toString(),
-                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
-                                  ),
-                                  const Icon(Icons.star, color: Colors.white, size: 10),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              '${service.reviewsCount} Ratings',
-                              style: TextStyle(color: Colors.grey[600], fontSize: 12),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          service.location,
-                          style: TextStyle(fontSize: 13, color: Colors.grey[600]),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Open until 8:00 PM',
-                          style: TextStyle(fontSize: 12, color: Colors.green[700], fontWeight: FontWeight.w500),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const Divider(height: 24),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _buildActionButton(context, Icons.phone, 'Call Now', const Color(0xFF007BFF)),
-                  _buildActionButton(context, Icons.chat_bubble_outline, 'WhatsApp', Colors.green),
-                  _buildActionButton(context, Icons.email_outlined, 'Enquire', const Color(0xFFF47E20)),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildActionButton(BuildContext context, IconData icon, String label, Color color) {
-    return InkWell(
-      onTap: () => onTap(service),
-      child: Column(
-        children: [
-          Icon(icon, color: color, size: 22),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold),
-          ),
-        ],
       ),
     );
   }

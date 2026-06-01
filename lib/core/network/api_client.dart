@@ -37,7 +37,7 @@ class ApiClient {
     return headers;
   }
 
-  Future<Map<String, dynamic>> get(String url,
+  Future<dynamic> get(String url,
       {Map<String, String>? queryParams, bool withAuth = true}) async {
     try {
       var uri = Uri.parse(url);
@@ -47,7 +47,7 @@ class ApiClient {
       final response = await _client
           .get(uri, headers: await _headers(withAuth: withAuth))
           .timeout(_timeout);
-      return _handleResponse(response);
+      return await _handleResponse(response);
     } on SocketException {
       throw ApiException('No internet connection');
     } on http.ClientException {
@@ -55,7 +55,7 @@ class ApiClient {
     }
   }
 
-  Future<Map<String, dynamic>> post(String url,
+  Future<dynamic> post(String url,
       {Map<String, dynamic>? body, bool withAuth = true}) async {
     try {
       final response = await _client
@@ -65,7 +65,7 @@ class ApiClient {
             body: body != null ? jsonEncode(body) : null,
           )
           .timeout(_timeout);
-      return _handleResponse(response);
+      return await _handleResponse(response);
     } on SocketException {
       throw ApiException('No internet connection');
     } on http.ClientException {
@@ -73,7 +73,7 @@ class ApiClient {
     }
   }
 
-  Future<Map<String, dynamic>> put(String url,
+  Future<dynamic> put(String url,
       {Map<String, dynamic>? body, bool withAuth = true}) async {
     try {
       final response = await _client
@@ -83,7 +83,7 @@ class ApiClient {
             body: body != null ? jsonEncode(body) : null,
           )
           .timeout(_timeout);
-      return _handleResponse(response);
+      return await _handleResponse(response);
     } on SocketException {
       throw ApiException('No internet connection');
     } on http.ClientException {
@@ -91,13 +91,31 @@ class ApiClient {
     }
   }
 
-  Future<Map<String, dynamic>> delete(String url,
+  Future<dynamic> patch(String url,
+      {Map<String, dynamic>? body, bool withAuth = true}) async {
+    try {
+      final response = await _client
+          .patch(
+            Uri.parse(url),
+            headers: await _headers(withAuth: withAuth),
+            body: body != null ? jsonEncode(body) : null,
+          )
+          .timeout(_timeout);
+      return await _handleResponse(response);
+    } on SocketException {
+      throw ApiException('No internet connection');
+    } on http.ClientException {
+      throw ApiException('Connection failed');
+    }
+  }
+
+  Future<dynamic> delete(String url,
       {bool withAuth = true}) async {
     try {
       final response = await _client
           .delete(Uri.parse(url), headers: await _headers(withAuth: withAuth))
           .timeout(_timeout);
-      return _handleResponse(response);
+      return await _handleResponse(response);
     } on SocketException {
       throw ApiException('No internet connection');
     } on http.ClientException {
@@ -105,22 +123,23 @@ class ApiClient {
     }
   }
 
-  Map<String, dynamic> _handleResponse(http.Response response) {
-    Map<String, dynamic> data;
+  Future<dynamic> _handleResponse(http.Response response) async {
+    dynamic data;
     try {
-      data = jsonDecode(response.body) as Map<String, dynamic>;
+      data = jsonDecode(response.body);
     } catch (_) {
-      data = {'message': response.body};
+      data = response.body;
     }
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return data;
     }
 
-    final message = data['message'] as String? ?? 'Request failed';
-    final code = data['code'] as String?;
+    final message = data is Map ? (data['message'] as String? ?? 'Request failed') : 'Request failed';
+    final code = data is Map ? data['code'] as String? : null;
 
     if (response.statusCode == 401 && code == 'TOKEN_EXPIRED') {
+      await _storage.clearAll();
       throw ApiException('Session expired. Please login again.',
           statusCode: 401, code: 'TOKEN_EXPIRED');
     }
